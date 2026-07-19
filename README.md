@@ -36,6 +36,7 @@ decision here follows from that.
 | Navigate | `←` `→` `Space` · click · right-click back |
 | Jump to slide | number keys |
 | Black / white the screen | `B` / `W` |
+| Show / hide the bottom bar | `Tab` |
 | Exit | `Esc` |
 
 **Presenter view** opens a second window — put it on your laptop and the
@@ -186,9 +187,12 @@ Matching is automatic: identical text, the same image, the same shape. Set a
 its own. The starter deck carries a brand mark and an accent rule through all
 ten slides so you can see it immediately.
 
-Unmatched content is deliberately offset in time — the old recedes over the
-first half, the new arrives on a delay — so the *movement leads* and the
-changes follow. Doing both at once just reads as a cross-fade.
+Unmatched content is **strictly sequenced**: the outgoing content is fully
+gone before any incoming content starts arriving. Overlapping them is wrong —
+two slides that each hold a paragraph produce no match (the words differ), so
+both would be on screen at once, which reads as a doubling glitch rather than
+a transition. Matched elements still travel across the whole duration, so the
+*movement still leads* and the changes follow.
 
 All of it is driven by the Web Animations API rather than CSS transitions: a
 transition cannot start on an element inserted in the same frame (it has no

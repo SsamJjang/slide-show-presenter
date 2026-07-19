@@ -67,6 +67,18 @@ const Inspector = (() => {
 
   function render() {
     const els = Store.selectedElements();
+
+    /* A rebuild throws away the DOM, which means the scroll position and any
+       focused field go with it. Capture both first and put them back after,
+       so an unrelated change elsewhere can never yank the panel to the top or
+       drop the caret out of the box being typed in. */
+    const scroll = root.scrollTop;
+    const act = document.activeElement;
+    const focusKey = act && root.contains(act)
+      ? (act.dataset.key || act.dataset.slidenum || null) : null;
+    const selStart = focusKey ? act.selectionStart : null;
+    const selEnd = focusKey ? act.selectionEnd : null;
+
     // The finish swatches render the real treatment, so the panel needs the
     // deck's colour variables. Editor chrome uses --ui-* names, so there's
     // no collision with these.
@@ -74,6 +86,18 @@ const Inspector = (() => {
     root.innerHTML = els.length ? elementPanel(els) : slidePanel();
     hydrateIcons(root);
     wire();
+
+    root.scrollTop = scroll;
+    if (focusKey) {
+      const again = root.querySelector(`[data-key="${focusKey}"], [data-slidenum="${focusKey}"]`);
+      if (again) {
+        again.focus({ preventScroll: true });
+        // Restoring the caret only makes sense for fields that have one.
+        if (selStart != null && again.setSelectionRange) {
+          try { again.setSelectionRange(selStart, selEnd); } catch { /* not a text field */ }
+        }
+      }
+    }
   }
 
   /* --- nothing selected: slide + deck properties --- */
@@ -436,13 +460,18 @@ const Inspector = (() => {
         const label = inp.parentElement.querySelector('.rangeval');
         if (label) label.textContent = Math.round(v * 100) / 100;
 
-        // Sliders and number spinners fire continuously — patch in place so the
-        // control keeps pointer capture and the drag stays smooth.
-        upd({ [key]: v }, 'insp-' + key, isNum);
+        // Anything typed or scrubbed fires continuously, so it must patch in
+        // place. A full rebuild would replace this very input mid-keystroke:
+        // the caret would vanish and the panel would jump back to the top.
+        const continuous = isNum || inp.tagName === 'TEXTAREA' || inp.type === 'text';
+        upd({ [key]: v }, 'insp-' + key, continuous);
       });
 
-      // Once the scrub finishes, do a full resync so thumbnails catch up.
-      if (isNum) inp.addEventListener('change', () => Store.settle());
+      // Once typing or scrubbing stops, resync the surfaces that were skipped.
+      if (isNum || inp.tagName === 'TEXTAREA' || inp.type === 'text') {
+        inp.addEventListener('change', () => Store.settle());
+        inp.addEventListener('blur', () => Store.settle());
+      }
     });
 
     // segmented controls

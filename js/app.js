@@ -199,6 +199,7 @@ const App = (() => {
     ['Present from start', 'Ctrl Enter'], ['Present from this slide', 'Shift F5'],
     ['Presenter view (while presenting)', 'P'], ['Exit presenting', 'Esc'],
     ['Black / white screen (presenting)', 'B / W'],
+    ['Show / hide the bottom bar (presenting)', 'Tab'],
     ['New slide', 'Ctrl M'], ['Duplicate slide', 'Ctrl Shift D'],
     ['Next / previous slide', 'PgDn / PgUp'],
     ['Undo / redo', 'Ctrl Z / Ctrl Shift Z'],

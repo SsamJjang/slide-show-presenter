@@ -34,6 +34,7 @@ const Present = (() => {
     active = true;
     index = from; step = 0;
     startedAt = Date.now();
+    hudDismissed = false;
 
     root.hidden = false;
     applyTheme(root, Store.deck.theme, Store.deck);
@@ -190,11 +191,27 @@ const Present = (() => {
     }, 1000);
   }
 
+  /* When the bar is dismissed with Tab it stays dismissed — moving the mouse
+     must not bring it back, or the dismissal would be meaningless. */
+  let hudDismissed = false;
+
   function bumpHud() {
+    if (hudDismissed) return;
     root.classList.add('hud-on', 'show-cursor');
     clearTimeout(hudTimeout);
     hudTimeout = setTimeout(() => root.classList.remove('hud-on', 'show-cursor'), 2600);
   }
+
+  function toggleHud() {
+    hudDismissed = !hudDismissed;
+    if (hudDismissed) {
+      clearTimeout(hudTimeout);
+      root.classList.remove('hud-on', 'show-cursor');
+    } else {
+      bumpHud();
+    }
+  }
+
   root.addEventListener('mousemove', () => active && bumpHud());
 
   function toggleBlank(mode) {
@@ -291,9 +308,9 @@ const Present = (() => {
     const k = e.key;
 
     if (k === 'Escape')                                   { stop(); e.preventDefault(); return; }
-    // Tab would move focus into the HUD and force it visible (and paint a focus
-    // ring on the projector). There is nothing to focus while presenting.
-    if (k === 'Tab') { e.preventDefault(); return; }
+    // Tab toggles the bottom bar and keeps it that way — press once to get rid
+    // of it for the whole talk, press again to bring it back.
+    if (k === 'Tab') { e.preventDefault(); toggleHud(); return; }
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { next(); e.preventDefault(); return; }
     if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k))       { prev(); e.preventDefault(); return; }
     if (k === 'Home')  { goto(0); e.preventDefault(); return; }

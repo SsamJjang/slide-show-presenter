@@ -95,7 +95,18 @@ const Canvas = (() => {
       set('height', el.h + 'px');
       set('opacity', String(el.opacity));
       set('transform', el.rot ? `rotate(${el.rot}deg)` : '');
+
+      // Content changed (typing, a chart value, a shape parameter): swap only
+      // this element's inner markup. Replacing the node would restart its
+      // animations; re-rendering the slide would cost far more.
+      if (pendingBody) {
+        node.innerHTML = Render.elementBody(el);
+        if (el.shadow && el.shadow !== 'none') {
+          node.style.filter = `drop-shadow(${Render.SHADOWS[el.shadow]})`;
+        }
+      }
     });
+    pendingBody = false;
     drawSelection();
   }
 
@@ -366,7 +377,14 @@ const Canvas = (() => {
     return el;
   }
 
+  /* Geometry can be patched by writing a few style properties. Anything else
+     changes what the element *draws*, so its body has to be re-rendered — but
+     still only that one element, never the whole slide. */
+  const GEOM_KEYS = new Set(['x', 'y', 'w', 'h', 'rot', 'opacity']);
+  let pendingBody = false;
+
   function updateSelected(patch, tag, live = false) {
+    if (live && Object.keys(patch).some(k => !GEOM_KEYS.has(k))) pendingBody = true;
     Store.commit(() => {
       Store.selectedElements().forEach(e => Object.assign(e, patch));
     }, { tag, live });

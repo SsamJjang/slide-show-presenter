@@ -155,14 +155,18 @@ function magic(fromPg,toPg){
               {duration:dur,easing:ease,fill:'both'});
     a.style.visibility='hidden';
   });
+  /* Strictly sequenced: old fully gone before new arrives, so two slides that
+     both hold text never show both at once. Matched elements still travel
+     across the whole duration, so movement keeps leading. */
   fromPg.querySelectorAll('.el').forEach(e=>{
     if(e.style.visibility==='hidden')return;
-    e.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-14px)'}],
-      {duration:dur*.5,easing:'ease',fill:'both'});});
+    e.style.animation='none';
+    e.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-12px)'}],
+      {duration:dur*.40,easing:'ease-in',fill:'both'});});
   toPg.querySelectorAll('.el').forEach(e=>{
     if(moved.has(e))return;
-    e.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:dur*.6,delay:dur*.35,easing:ease,fill:'both'});});
+    e.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:dur*.52,delay:dur*.44,easing:ease,fill:'both'});});
   setTimeout(()=>{
     fromPg.querySelectorAll('.el').forEach(e=>{e.getAnimations().forEach(x=>x.cancel());e.style.visibility='';});
     toPg.querySelectorAll('.el').forEach(e=>{e.getAnimations().forEach(x=>x.cancel());

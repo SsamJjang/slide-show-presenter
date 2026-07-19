@@ -120,24 +120,39 @@ const Continuity = (() => {
       moved.add(to.id);
     });
 
-    // Everything that isn't travelling: the old content recedes, the new
-    // arrives slightly later, so the movement leads and the changes follow.
-    // Simultaneous would read as a plain cross-fade.
+    /* Everything that isn't travelling is strictly sequenced: the old content
+       is fully gone before any new content starts arriving.
+
+       Overlapping them was wrong. Two slides that each hold a paragraph of
+       text produce no match (the words differ), so both were on screen at
+       once — the incoming text appeared while the outgoing one was still
+       fading, which reads as a doubling glitch rather than a transition. The
+       matched elements still travel across the whole duration, so the
+       movement continues to lead; only the fades are separated. */
+    const OUT = duration * .40;
+    const IN_DELAY = duration * .44;      // just past the last outgoing frame
+
+    // Advancing before the previous slide finished its entrance stagger would
+    // leave that CSS animation running and fighting this fade for the same
+    // property. Stop it first so the exit is the only thing driving opacity.
+    prevHost.classList.remove('entering');
+
     prevHost.querySelectorAll('.el').forEach(el => {
       if (el.style.visibility === 'hidden') return;
+      el.style.animation = 'none';
       running.push(el.animate(
         [{ opacity: 1, transform: 'translateY(0)' },
-         { opacity: 0, transform: 'translateY(-14px)' }],
-        { duration: duration * .5, easing: 'ease', fill: 'both' }));
+         { opacity: 0, transform: 'translateY(-12px)' }],
+        { duration: OUT, easing: 'ease-in', fill: 'both' }));
     });
 
     nextHost.querySelectorAll('.el').forEach(el => {
       if (moved.has(el.dataset.id)) return;
       el.style.animation = 'none';
       running.push(el.animate(
-        [{ opacity: 0, transform: 'translateY(18px)' },
+        [{ opacity: 0, transform: 'translateY(16px)' },
          { opacity: 1, transform: 'translateY(0)' }],
-        { duration: duration * .6, delay: duration * .35, easing: EASE, fill: 'both' }));
+        { duration: duration * .52, delay: IN_DELAY, easing: EASE, fill: 'both' }));
     });
 
     // Resolves when the last one lands, so the caller tears down at exactly
