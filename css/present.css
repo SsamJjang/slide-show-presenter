@@ -45,6 +45,65 @@
                        to   { opacity: 1; transform: scale(var(--s,1)); } }
 @keyframes pZoomOut  { to   { opacity: 0; transform: scale(calc(var(--s,1) * 1.06)); } }
 
+/* --- extended transition set --- */
+.present-stage .slide-host.enter-zoomOut  { animation: pPullIn .5s cubic-bezier(.2,.9,.3,1) both; }
+.present-stage .slide-host.exit-zoomOut   { animation: pPullOut .38s ease both; }
+@keyframes pPullIn   { from { opacity: 0; transform: scale(calc(var(--s,1) * 1.18)); }
+                       to   { opacity: 1; transform: scale(var(--s,1)); } }
+@keyframes pPullOut  { to   { opacity: 0; transform: scale(calc(var(--s,1) * .86)); } }
+
+.present-stage .slide-host.enter-blur { animation: pBlurIn .5s ease both; }
+.present-stage .slide-host.exit-blur  { animation: pBlurOut .4s ease both; }
+@keyframes pBlurIn   { from { opacity: 0; filter: blur(26px); }
+                       to   { opacity: 1; filter: blur(0); } }
+@keyframes pBlurOut  { to   { opacity: 0; filter: blur(26px); } }
+
+.present-stage .slide-host.enter-iris { animation: pIrisIn .62s cubic-bezier(.3,.85,.25,1) both; }
+.present-stage .slide-host.exit-iris  { animation: pFadeOut .3s ease both; }
+@keyframes pIrisIn   { from { clip-path: circle(0% at 50% 50%); }
+                       to   { clip-path: circle(78% at 50% 50%); } }
+
+/* Cover slides the new deck over the old one, which stays put — the old
+   slide must not also move or the two cancel out visually. */
+.present-stage .slide-host.enter-cover { animation: pCoverIn .5s cubic-bezier(.3,.9,.25,1) both; }
+.present-stage .slide-host.exit-cover  { animation: pHold .5s both; }
+@keyframes pCoverIn  { from { transform: scale(var(--s,1)) translateX(100%); }
+                       to   { transform: scale(var(--s,1)) translateX(0); } }
+@keyframes pHold     { to { opacity: 1; } }
+
+/* Reveal is the inverse: the old slide leaves, uncovering the new one. */
+.present-stage .slide-host.enter-reveal { animation: pHold .5s both; z-index: 0; }
+.present-stage .slide-host.exit-reveal  { animation: pRevealOut .5s cubic-bezier(.3,.9,.25,1) both; z-index: 1; }
+@keyframes pRevealOut { to { transform: scale(var(--s,1)) translateX(-100%); } }
+
+.present-stage .slide-host.enter-flip { animation: pFlipIn .58s cubic-bezier(.3,.9,.3,1) both; }
+.present-stage .slide-host.exit-flip  { animation: pFlipOut .34s ease-in both; }
+@keyframes pFlipIn   { from { opacity: 0; transform: scale(var(--s,1)) perspective(1600px) rotateY(52deg); }
+                       to   { opacity: 1; transform: scale(var(--s,1)) perspective(1600px) rotateY(0); } }
+@keyframes pFlipOut  { to   { opacity: 0; transform: scale(var(--s,1)) perspective(1600px) rotateY(-52deg); } }
+
+.present-stage .slide-host.enter-swipeUp { animation: pSwipeUpIn .5s cubic-bezier(.25,.9,.25,1) both; }
+.present-stage .slide-host.exit-swipeUp  { animation: pSwipeUpOut .5s cubic-bezier(.25,.9,.25,1) both; }
+@keyframes pSwipeUpIn  { from { transform: scale(var(--s,1)) translateY(100%); } }
+@keyframes pSwipeUpOut { to   { transform: scale(var(--s,1)) translateY(-42%); opacity: 0; } }
+
+.present-stage .slide-host.enter-dissolve { animation: pDissolveIn .72s ease both; }
+.present-stage .slide-host.exit-dissolve  { animation: pFadeOut .5s ease both; }
+@keyframes pDissolveIn { from { opacity: 0; filter: blur(8px) contrast(1.4); }
+                         to   { opacity: 1; filter: blur(0) contrast(1); } }
+
+/* Glitch: three hard jumps with colour separation. Short on purpose —
+   it's a punctuation mark, and it stops being one if it lingers. */
+.present-stage .slide-host.enter-glitch { animation: pGlitchIn .42s steps(1,end) both; }
+.present-stage .slide-host.exit-glitch  { animation: pFadeOut .16s both; }
+@keyframes pGlitchIn {
+  0%   { opacity: 0; transform: scale(var(--s,1)) translateX(-2%); filter: hue-rotate(70deg) saturate(3); }
+  25%  { opacity: 1; transform: scale(var(--s,1)) translateX(1.6%); filter: hue-rotate(-50deg) saturate(2.4); }
+  50%  { transform: scale(var(--s,1)) translateX(-.9%); filter: none; }
+  75%  { transform: scale(var(--s,1)) translateX(.5%); filter: saturate(1.6); }
+  100% { transform: scale(var(--s,1)) translateX(0); filter: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .present-stage .slide-host { animation-duration: .01ms !important; }
   .el { transition-duration: .01ms !important; }

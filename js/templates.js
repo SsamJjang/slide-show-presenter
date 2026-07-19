@@ -303,6 +303,29 @@ const LAYOUTS = {
      These lean on the depth/motion/colour systems rather than just placing
      text in boxes. Each sets its own background preset via `slide`. */
 
+  glassHero: {
+    name: 'Glass hero', hint: 'Liquid glass over living depth',
+    slide: { bgPreset: 'nebula', bgMotion: 'orbit', bgSpeed: .7, bgGrain: true, transition: 'iris' },
+    build: () => [
+      // Liquid glass needs something behind it to refract — the drifting
+      // blooms are exactly that, which is why this pairs them.
+      S({ shape: 'squircle', exponent: 5, x: 150, y: 300, w: 1620, h: 500,
+          material: 'liquid', anim: 'scale', emphasis: 'levitate', shadow: 'dramatic' }),
+      T({ role: 'kicker', text: 'INTRODUCING', x: 230, y: 372, w: 1400, h: 50,
+          size: 26, weight: 700, letterSpacing: .24, uppercase: true,
+          color: 'var(--accent)', anim: 'fade' }),
+      T({ role: 'display', text: 'Apex', x: 230, y: 430, w: 1400, h: 240,
+          size: 190, weight: 800, lineHeight: 1, letterSpacing: -.045,
+          finish: 'liquidglass', anim: 'blur', animSpeed: 'slow' }),
+      T({ role: 'subtitle', text: 'The fastest way to ship intelligence.',
+          x: 230, y: 672, w: 1200, h: 70, size: 36, color: 'var(--muted)', anim: 'rise' }),
+      S({ shape: 'blob', seed: 4, sides: 7, x: 1480, y: 120, w: 300, h: 300,
+          fill: 'accent2', anim: 'pop', emphasis: 'float', shadow: 'glow' }),
+      S({ shape: 'star', sides: 6, innerRatio: .38, radius: 10, x: 90, y: 800,
+          w: 150, h: 150, fill: 'accent', anim: 'roll', emphasis: 'spin' }),
+    ],
+  },
+
   hero: {
     name: 'Hero', hint: 'Liquid opener', slide: { bgPreset: 'mesh', bgMotion: 'orbit', bgSpeed: .8, bgGrain: true },
     build: () => [
@@ -343,7 +366,7 @@ const LAYOUTS = {
       ];
       stats.forEach(([big, small], i) => {
         const x = MARGIN + i * 560;
-        out.push(S({ shape: 'rect', x, y: 380, w: 500, h: 380, glass: true, radius: 28,
+        out.push(S({ shape: 'rect', x, y: 380, w: 500, h: 380, material: 'glass', radius: 28,
                      anim: 'rise', build: i === 0 ? 0 : i }));
         out.push(T({ role: 'display', text: big, x: x + 48, y: 460, w: 404, h: 150,
                      size: 96, weight: 800, letterSpacing: -.04, finish: 'chrome',
@@ -369,7 +392,7 @@ const LAYOUTS = {
       ];
       feats.forEach(([t, d], i) => {
         const x = MARGIN + (i % 3) * 560, y = 300 + Math.floor(i / 3) * 320;
-        out.push(S({ shape: 'rect', x, y, w: 500, h: 260, glass: true, radius: 22, anim: 'fade' }));
+        out.push(S({ shape: 'rect', x, y, w: 500, h: 260, material: 'glass', radius: 22, anim: 'fade' }));
         out.push(S({ shape: 'rect', x: x + 40, y: y + 40, w: 44, h: 5, fill: 'accent', radius: 3 }));
         out.push(T({ role: 'subtitle', text: t, x: x + 40, y: y + 76, w: 420, h: 60,
                      size: 36, weight: 700, letterSpacing: -.02 }));
@@ -446,15 +469,15 @@ function starterDeck() {
   };
 
   d.slides = [
-    from('hero', 'Pause. Let the title sit for two seconds before you speak.'),
+    from('glassHero', 'Pause. Let the title sit for two seconds before you speak.'),
     from('statement', 'This is the thesis of the whole talk.', { transition: 'zoom', bgPreset: 'spotlight' }),
     from('product', 'Drop a real screenshot in. Do not narrate the UI — let them look.'),
-    from('metrics', 'Three numbers, revealed one at a time. Stop talking after each.'),
+    from('metrics', 'Three numbers, revealed one at a time. Stop talking after each.', { transition: 'swipeUp' }),
     from('featureGrid', 'Do not read these aloud. Ten seconds of silence.'),
-    from('bigQuote', 'Let this land. Count to three before the next slide.'),
+    from('bigQuote', 'Let this land. Count to three before the next slide.', { transition: 'iris' }),
     from('chart', 'Point at the inflection, not the axis.', { bgPreset: 'mesh' }),
     from('code', 'Read the first line aloud, then let them read the rest.'),
-    from('timeline', 'Roadmap. Be specific about "now", vague about "2027".'),
+    from('timeline', 'Roadmap. Be specific about "now", vague about "2027".', { transition: 'reveal' }),
     from('closing', 'Thank the room. Take questions.', { bgPreset: 'horizon', bgGrain: true }),
   ];
   return d;

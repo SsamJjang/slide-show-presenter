@@ -91,7 +91,7 @@ const Inspector = (() => {
 
       ${section('Transition', `
         ${chips('Style', 'transition', slide.transition,
-          [['none', 'None'], ['fade', 'Fade'], ['slide', 'Slide'], ['push', 'Push'], ['zoom', 'Zoom']])}
+          Motion.TRANSITIONS.map(([k, label]) => [k, label]))}
       `)}
 
       ${section('Atmosphere', `
@@ -191,12 +191,30 @@ const Inspector = (() => {
          ['dramatic', 'Dramatic'], ['glow', 'Glow']])}
     `);
 
-    out += section('Motion', `
-      ${chips('Entrance', 'anim', e.anim || 'rise',
-        [['rise', 'Rise'], ['fade', 'Fade'], ['blur', 'Blur'],
-         ['scale', 'Scale'], ['wipe', 'Wipe'], ['none', 'None']])}
-      <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:8px">
-        Elements arrive in stacking order with a 55ms stagger when the slide appears.
+    out += section('Entrance', `
+      <div data-chips="anim">
+        ${Motion.ENTRANCES.map(g => `
+          <div class="insp-sub">${g.group}</div>
+          <div class="chiprow" style="margin-bottom:7px">
+            ${g.items.map(([v, label]) =>
+              `<button class="chip ${(e.anim || 'rise') === v ? 'on' : ''}" data-val="${v}">${label}</button>`
+            ).join('')}
+          </div>`).join('')}
+      </div>
+      ${chips('Speed', 'animSpeed', e.animSpeed || 'normal',
+        Motion.SPEEDS.map(([k, label]) => [k, label]))}
+      <div class="insp-sub" style="margin-top:2px">
+        Elements arrive in stacking order with a stagger. Set Build order below
+        to hold one back until you click.
+      </div>
+    `);
+
+    out += section('Emphasis', `
+      ${chips('Loop', 'emphasis', e.emphasis || 'none',
+        Motion.EMPHASIS.map(([k, label]) => [k, label]))}
+      <div class="insp-sub" style="margin-top:2px">
+        Runs continuously while the slide is shown. Deliberately subtle — pick
+        one hero element, not the whole slide.
       </div>
     `);
 
@@ -258,8 +276,8 @@ const Inspector = (() => {
   `) + section('Finish', `
     <div class="fin-grid" data-chips="finish">
       ${[['none', 'Plain'], ['gradient', 'Gradient'], ['gloss', 'Gloss'], ['chrome', 'Chrome'],
-         ['liquid', 'Liquid'], ['shimmer', 'Shimmer'], ['frost', 'Frost'],
-         ['emboss', 'Emboss'], ['outline', 'Outline']].map(([v, label]) =>
+         ['liquidglass', 'Liquid glass'], ['liquid', 'Liquid'], ['shimmer', 'Shimmer'],
+         ['frost', 'Frost'], ['emboss', 'Emboss'], ['outline', 'Outline']].map(([v, label]) =>
         `<button class="chip fin ${(e.finish || 'none') === v ? 'on' : ''}" data-val="${v}">
            <span class="fin-prev finish-${v}">Ag</span><em>${label}</em></button>`).join('')}
     </div>
@@ -269,18 +287,58 @@ const Inspector = (() => {
     </div>
   `);
 
-  const shapeSection = (e) => section('Shape', `
-    ${chips('Kind', 'shape', e.shape,
-      [['rect', 'Rect'], ['ellipse', 'Ellipse'], ['triangle', 'Triangle'], ['line', 'Line'], ['arrow', 'Arrow']])}
-    <div class="btnrow" style="margin-bottom:8px">
-      <button class="btn ${e.glass ? 'on' : ''}" data-toggle="glass"
-        title="Frosted translucent panel">Glass panel</button>
-    </div>
-    ${swatches('Fill', 'fill', e.fill)}
-    ${swatches('Stroke', 'stroke', e.stroke)}
-    ${num('Stroke width', 'strokeWidth', e.strokeWidth, { min: 0, max: 40 })}
-    ${num('Corner radius', 'radius', e.radius, { min: 0, max: 400 })}
-  `);
+  /* Only the parameters the active generator actually reads are shown —
+     a "sides" slider on an ellipse is noise. */
+  const SHAPE_CONTROLS = {
+    sides:        (e) => num('Sides', 'sides', e.sides ?? 6, { min: 3, max: 24 }),
+    radius:       (e) => num('Corner radius', 'radius', e.radius ?? 0, { min: 0, max: 400 }),
+    rotation:     (e) => range('Angle', 'rotation', e.rotation ?? 0, -180, 180, 1),
+    innerRatio:   (e) => range('Inner', 'innerRatio', e.innerRatio ?? .5, .05, .98, .01),
+    thickness:    (e) => range('Thickness', 'thickness', e.thickness ?? .34, .02, .95, .01),
+    headRatio:    (e) => range('Head', 'headRatio', e.headRatio ?? .42, .1, .9, .01),
+    exponent:     (e) => range('Squareness', 'exponent', e.exponent ?? 4, 2, 12, .1),
+    irregularity: (e) => range('Irregularity', 'irregularity', e.irregularity ?? .28, 0, .9, .01),
+    seed:         (e) => num('Seed', 'seed', e.seed ?? 7, { min: 1, max: 999 }),
+    frequency:    (e) => range('Frequency', 'frequency', e.frequency ?? 2, .5, 12, .1),
+    amplitude:    (e) => range('Amplitude', 'amplitude', e.amplitude ?? .3, 0, 1, .01),
+    startAngle:   (e) => range('Start', 'startAngle', e.startAngle ?? -90, -180, 180, 1),
+    sweep:        (e) => range('Sweep', 'sweep', e.sweep ?? 270, 1, 359, 1),
+    tail:         (e) => range('Tail', 'tail', e.tail ?? .3, .05, .95, .01),
+    corners:      (e) => `
+      ${num('Corner radius', 'radius', e.radius ?? 0, { min: 0, max: 400 })}
+      <div class="insp-sub">Per corner — blank follows the value above</div>
+      <div class="grid4">
+        ${['rTL', 'rTR', 'rBR', 'rBL'].map(k =>
+          `<input class="inp" type="number" data-key="${k}" placeholder="—"
+             value="${e[k] ?? ''}" min="0" max="400" title="${k}">`).join('')}
+      </div>`,
+  };
+
+  const shapeSection = (e) => {
+    const kind = e.shape || 'rect';
+    const params = Shapes.PARAMS[Shapes.ALIAS[kind] || kind] || [];
+    return section('Shape', `
+      <div class="shape-grid" data-chips="shape">
+        ${Shapes.CATALOG.map(([k, label]) =>
+          `<button class="chip shp ${k === kind ? 'on' : ''}" data-val="${k}" title="${label}">
+             <svg viewBox="0 0 40 40" aria-hidden="true"><path d="${
+               Shapes.path({ ...e, shape: k, w: 34, h: 34, radius: Math.min(e.radius ?? 6, 8) })
+             }" transform="translate(3,3)"/></svg>
+             <em>${label}</em></button>`).join('')}
+      </div>
+      ${params.length ? `<div class="insp-sub" style="margin-top:10px">Parameters</div>
+        ${params.map(p => SHAPE_CONTROLS[p]?.(e) || '').join('')}` : ''}
+    `) + section('Material', `
+      ${chips('Surface', 'material', e.material || 'none',
+        [['none', 'Solid'], ['glass', 'Frosted'], ['liquid', 'Liquid glass']])}
+      ${(e.material || 'none') === 'none' ? `
+        ${swatches('Fill', 'fill', e.fill)}
+        ${swatches('Stroke', 'stroke', e.stroke)}
+        ${num('Stroke width', 'strokeWidth', e.strokeWidth, { min: 0, max: 40 })}
+      ` : `<div class="insp-sub">Liquid glass refracts whatever sits behind it —
+             put it over a photo or a moving background, not over flat colour.</div>`}
+    `);
+  };
 
   const imageSection = (e) => section('Image', `
     <div class="field stack"><label>Source URL</label>
@@ -352,6 +410,12 @@ const Inspector = (() => {
       const evt = (inp.tagName === 'SELECT' || inp.type === 'color') ? 'change' : 'input';
 
       inp.addEventListener(evt, () => {
+        // Per-corner overrides are intentionally nullable: cleared means
+        // "inherit the shared radius", which is not the same as zero.
+        if (/^r(TL|TR|BR|BL)$/.test(key) && inp.value.trim() === '') {
+          upd({ [key]: null }, 'insp-' + key);
+          return;
+        }
         let v = isNum ? parseFloat(inp.value) : inp.value;
         if (isNum && Number.isNaN(v)) return;
         if (key === 'build') v = parseInt(inp.value, 10);

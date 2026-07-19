@@ -115,6 +115,7 @@ that render the actual finish:
 | **Chrome** | Neutral metal. The tight light/dark inversion at the midline is the horizon reflecting in the bevel. |
 | **Liquid** | An oversized gradient sliding under the glyphs, so colour appears to pour through the letterforms. Animated. |
 | **Shimmer** | A single specular band crossing the fill, with a long pause between passes so it reads as a catch of light rather than a loop. Animated. |
+| **Liquid glass** | Apple's material, painted. `backdrop-filter` can't be clipped to glyphs, so the glass is drawn instead: a refractive crown, a travelling highlight, a dark underside, a hairline stroke standing in for edge thickness, and a contact shadow. Animated. |
 | **Frost** | Etched into glass — translucent, legible over busy backgrounds. |
 | **Emboss** | Pressed into the surface. Prints well. |
 | **Outline** | Weight without mass. Good over photography. |
@@ -127,10 +128,38 @@ Every finish degrades to a solid readable colour if its clip isn't
 supported — the failure mode is never invisible text, and there's a test
 asserting exactly that across all 120 theme/layout combinations.
 
-**Choreography.** Elements arrive in stacking order with a 55ms stagger, each
-with its own entrance — rise, fade, blur, scale, or wipe. This is the part
-that's genuinely tedious to reproduce by hand in PowerPoint, where it's a
-per-object animation pane. Respects `prefers-reduced-motion`.
+**Shapes are generated, not listed.** Fourteen *generators* with open
+parameters, rather than a fixed menu: sides, corner radius, angle, inner
+ratio, thickness, squareness, irregularity, sweep. A triangle, a heptagon, a
+seven-point star with softened tips and a rounded gauge arc are all the same
+few generators at different settings, so the shape count is effectively
+unbounded. Everything angular routes through one corner-rounding routine
+(walk back along both edges by `r / tan(theta/2)`, join with an arc, clamp
+the inset to half the shorter edge) — which is why one radius control softens
+a triangle, a star and a chevron identically without ever inverting the path.
+
+Includes a real **squircle** (superellipse — the maths behind an Apple icon,
+with the exponent exposed), organic **blobs** that are deterministic from a
+seed so a shape you like is reproducible, and per-corner radius overrides on
+rectangles.
+
+**Choreography.** Three independent layers, which is what makes combinations
+work — a title can drop in with a spring, float gently forever, and sit on a
+slide that arrived with an iris wipe, without any of the three knowing about
+the others:
+
+- **31 entrances** grouped as Basic, Directional, Reveal, Dimensional and
+  Energetic — including spring, elastic, drop, roll, unfold, iris, split,
+  flip and zoom-blur. Three speeds.
+- **14 emphasis loops** that run for as long as the slide is up: float, bob,
+  sway, breathe, pulse, glow, spin, orbit, wobble, tilt, shine, flicker,
+  levitate. All deliberately small — anything bigger competes with the person
+  speaking.
+- **14 slide transitions**: fade, slide, push, zoom, pull back, blur, iris,
+  cover, reveal, flip, swipe up, dissolve, glitch, cut.
+
+Elements arrive in stacking order with a 55ms stagger. Everything respects
+`prefers-reduced-motion`, and every loop is frozen in thumbnails and print.
 
 ### Text formatting
 
@@ -161,7 +190,9 @@ css/   app.css      editor chrome
        present.css  presentation + presenter view
 js/    slide-css.js slide surface + print rules (see note below)
        palette.js   colour engine — derives a full palette from one accent
-       backgrounds.js  nine depth presets, grain, vignette
+       backgrounds.js  ten depth presets, motion modes, grain, vignette
+       shapes.js    parametric shape generators + corner rounding
+       motion.js    entrance / emphasis / transition catalogue
        model.js     deck model, undo history
        store.js     autosave + recovery
        render.js    the single slide renderer

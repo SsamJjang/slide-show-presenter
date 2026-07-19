@@ -358,6 +358,23 @@ input[type="color"] { width: 30px; height: 29px; padding: 2px; background: var(-
 /* Finish picker: each swatch renders the actual treatment, so you choose by
    looking rather than by reading a label. Colours come from the canvas's
    live theme variables via .inspector below. */
+.insp-sub {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ui-muted);
+  margin: 9px 0 5px; opacity: .8;
+}
+
+/* Shape picker: each tile draws its own generator output, so the catalogue
+   is self-documenting and stays correct if a generator changes. */
+.shape-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.chip.shp {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 7px 2px 5px;
+}
+.chip.shp svg { width: 26px; height: 26px; fill: currentColor; }
+.chip.shp em { font-style: normal; font-size: 9px; opacity: .75; line-height: 1.1; text-align: center; }
+.chip.shp.on svg { fill: #fff; }
+
 .fin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .chip.fin {
   display: flex; flex-direction: column; align-items: center; gap: 4px;

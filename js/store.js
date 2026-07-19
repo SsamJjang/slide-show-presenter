@@ -76,6 +76,11 @@ const Persist = (() => {
         // existing deck doesn't silently start animating in a way its author
         // never chose — new elements opt in via the model default.
         e.anim ??= 'none';
+        e.emphasis ??= 'none';
+        e.animSpeed ||= 'normal';
+        // The old boolean glass flag became a named material.
+        if (e.material === undefined) e.material = e.glass ? 'glass' : 'none';
+        delete e.glass;
         // v1 carried a boolean; v2 has a named finish.
         if (e.finish === undefined) e.finish = e.gradient ? 'gradient' : 'none';
         delete e.gradient;

@@ -25,9 +25,15 @@ const ELEMENT_DEFAULTS = {
     finish: 'none',         // see Text finishes: gradient|gloss|chrome|liquid|shimmer|frost|emboss|outline
   },
   shape: {
-    shape: 'rect',          // rect | ellipse | triangle | line | arrow
-    fill: 'accent', stroke: null, strokeWidth: 0, radius: 16,
-    glass: false,           // frosted translucent panel with a hairline edge
+    shape: 'rect',          // any generator in Shapes.CATALOG
+    fill: 'accent', stroke: null, strokeWidth: 0,
+    material: 'none',       // none | glass | liquid
+    // Parametric controls. Each generator reads the subset it needs
+    // (see Shapes.PARAMS), which is what makes the shape count unbounded.
+    radius: 16, rotation: 0, sides: 6, innerRatio: .5, thickness: .34,
+    headRatio: .42, exponent: 4, irregularity: .28, seed: 7,
+    frequency: 2, amplitude: .3, startAngle: -90, sweep: 270, tail: .3,
+    rTL: null, rTR: null, rBR: null, rBL: null,   // per-corner override
   },
   mockup: {
     kind: 'browser',        // browser | phone | window
@@ -55,7 +61,9 @@ function makeElement(type, patch = {}) {
     rot: 0, opacity: 1, locked: false, hidden: false,
     shadow: 'none',         // none | soft | lifted | dramatic | glow
     build: 0,               // 0 = always visible, 1+ = reveal step
-    anim: 'rise',           // entrance motion: none | rise | fade | blur | scale | wipe
+    anim: 'rise',           // entrance — see Motion.ENTRANCES
+    emphasis: 'none',       // looping behaviour — see Motion.EMPHASIS
+    animSpeed: 'normal',    // fast | normal | slow
   };
   return Object.assign(base, structuredClone(ELEMENT_DEFAULTS[type] || {}), patch);
 }
