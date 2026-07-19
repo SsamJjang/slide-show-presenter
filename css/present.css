@@ -1,0 +1,111 @@
+/* ===========================================================
+   Presentation mode + Presenter View.
+   =========================================================== */
+
+.present-root {
+  position: fixed; inset: 0; z-index: 500;
+  background: #000;
+  display: grid; place-items: center;
+  overflow: hidden; cursor: none;
+}
+.present-root.show-cursor { cursor: default; }
+
+.present-stage { position: relative; }
+
+/* ---------------- Transitions ----------------
+   Each slide enters with the transition stored on it. Kept short
+   (380ms) — anything longer reads as sluggish from the audience. */
+
+.present-stage .slide-host {
+  position: absolute; top: 0; left: 0;
+  will-change: transform, opacity;
+}
+.present-stage .slide-host.enter-fade  { animation: pFadeIn  .38s ease both; }
+.present-stage .slide-host.exit-fade   { animation: pFadeOut .38s ease both; }
+.present-stage .slide-host.enter-slide { animation: pSlideIn .42s cubic-bezier(.2,.8,.25,1) both; }
+.present-stage .slide-host.exit-slide  { animation: pSlideOut .42s cubic-bezier(.2,.8,.25,1) both; }
+.present-stage .slide-host.enter-push  { animation: pPushIn  .46s cubic-bezier(.3,.85,.25,1) both; }
+.present-stage .slide-host.exit-push   { animation: pPushOut .46s cubic-bezier(.3,.85,.25,1) both; }
+.present-stage .slide-host.enter-zoom  { animation: pZoomIn  .44s cubic-bezier(.2,.9,.3,1) both; }
+.present-stage .slide-host.exit-zoom   { animation: pZoomOut .3s ease both; }
+
+/* Transforms compose with the scale() the renderer sets, so every
+   keyframe re-declares it via the --s custom property. */
+@keyframes pFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pFadeOut  { to   { opacity: 0; } }
+@keyframes pSlideIn  { from { opacity: 0; transform: scale(var(--s,1)) translateX(7%); }
+                       to   { opacity: 1; transform: scale(var(--s,1)) translateX(0); } }
+@keyframes pSlideOut { to   { opacity: 0; transform: scale(var(--s,1)) translateX(-7%); } }
+@keyframes pPushIn   { from { transform: scale(var(--s,1)) translateY(100%); }
+                       to   { transform: scale(var(--s,1)) translateY(0); } }
+@keyframes pPushOut  { to   { transform: scale(var(--s,1)) translateY(-100%); } }
+@keyframes pZoomIn   { from { opacity: 0; transform: scale(calc(var(--s,1) * .88)); }
+                       to   { opacity: 1; transform: scale(var(--s,1)); } }
+@keyframes pZoomOut  { to   { opacity: 0; transform: scale(calc(var(--s,1) * 1.06)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .present-stage .slide-host { animation-duration: .01ms !important; }
+  .el { transition-duration: .01ms !important; }
+}
+
+/* ---------------- HUD ---------------- */
+
+.present-hud {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  padding: 14px 22px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
+  color: rgba(255,255,255,.72);
+  font: 500 12.5px/1 'Inter', system-ui, sans-serif;
+  opacity: 0; transition: opacity .25s; pointer-events: none;
+}
+.present-root.hud-on .present-hud { opacity: 1; }
+
+.hud-progress { height: 3px; background: rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.hud-progress i { display: block; height: 100%; background: #fff; border-radius: 2px; transition: width .3s ease; }
+.hud-row { display: flex; align-items: center; gap: 18px; }
+.hud-row #hudTimer { font-variant-numeric: tabular-nums; }
+.hud-hint { margin-left: auto; opacity: .55; }
+
+.present-blank { position: fixed; inset: 0; z-index: 20; background: #000; }
+.present-blank.white { background: #fff; }
+
+/* ---------------- Presenter View (second window) ---------------- */
+
+.pv-body {
+  margin: 0; height: 100vh; overflow: hidden;
+  background: #0b0c10; color: #e7e9ee;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: grid; grid-template-rows: auto 1fr; gap: 0;
+}
+
+.pv-top {
+  display: flex; align-items: center; gap: 20px;
+  padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.pv-timer { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.pv-clock { font-size: 14px; color: #878e9c; font-variant-numeric: tabular-nums; }
+.pv-count { margin-left: auto; font-size: 14px; color: #878e9c; font-variant-numeric: tabular-nums; }
+.pv-btn {
+  height: 30px; padding: 0 12px; border-radius: 8px; font-size: 12.5px;
+  background: #191c22; border: 1px solid rgba(255,255,255,.12); color: #c8cdd8; cursor: pointer;
+}
+.pv-btn:hover { color: #fff; border-color: rgba(255,255,255,.28); }
+
+.pv-main {
+  display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px;
+  padding: 18px 20px 22px; min-height: 0;
+}
+.pv-col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.pv-label { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #878e9c; }
+.pv-screen {
+  aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; position: relative;
+  background: #000; border: 1px solid rgba(255,255,255,.14);
+}
+.pv-screen.next { opacity: .82; }
+.pv-notes {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 14px 16px; border-radius: 10px;
+  background: #131519; border: 1px solid rgba(255,255,255,.1);
+  font-size: 17px; line-height: 1.62; white-space: pre-wrap;
+}
+.pv-notes.empty { color: #5f6774; font-style: italic; }
