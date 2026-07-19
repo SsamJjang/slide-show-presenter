@@ -278,7 +278,7 @@ const Inspector = (() => {
   /* ---------- wiring ---------- */
 
   function wire() {
-    const upd = (patch, tag) => Canvas.updateSelected(patch, tag);
+    const upd = (patch, tag, live) => Canvas.updateSelected(patch, tag, live);
 
     // numeric / text / select inputs bound by data-key
     root.querySelectorAll('[data-key]').forEach(inp => {
@@ -295,8 +295,13 @@ const Inspector = (() => {
         const label = inp.parentElement.querySelector('.rangeval');
         if (label) label.textContent = Math.round(v * 100) / 100;
 
-        upd({ [key]: v }, 'insp-' + key);
+        // Sliders and number spinners fire continuously — patch in place so the
+        // control keeps pointer capture and the drag stays smooth.
+        upd({ [key]: v }, 'insp-' + key, isNum);
       });
+
+      // Once the scrub finishes, do a full resync so thumbnails catch up.
+      if (isNum) inp.addEventListener('change', () => Store.settle());
     });
 
     // segmented controls
@@ -404,5 +409,22 @@ const Inspector = (() => {
       b.addEventListener('click', () => acts[b.dataset.act]?.()));
   }
 
-  return { render };
+  /* Push current model values into the existing inputs, without touching the
+     DOM structure — so the control being dragged survives the update. The
+     focused input is skipped: it's the source of truth mid-interaction, and
+     writing back to it would fight the user's cursor. */
+  function syncValues() {
+    const el = Store.selectedElements()[0];
+    if (!el) return;
+    root.querySelectorAll('[data-key]').forEach(inp => {
+      const key = inp.dataset.key;
+      if (!(key in el) || inp === document.activeElement) return;
+      const v = el[key];
+      if (inp.value != v) inp.value = v;
+      const label = inp.parentElement.querySelector('.rangeval');
+      if (label) label.textContent = Math.round(v * 100) / 100;
+    });
+  }
+
+  return { render, syncValues };
 })();

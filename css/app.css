@@ -98,7 +98,13 @@ input, textarea, select { font: inherit; color: inherit; }
   display: grid;
   grid-template-columns: var(--rail-w) 1fr var(--insp-w);
   height: calc(100vh - var(--top-h));
+  min-height: 0;
 }
+/* Grid and flex items default to min-height:auto, meaning they refuse to shrink
+   below their content. Without this a zoomed-in canvas pushes the stage taller
+   than its cell and shoves the bottom bar off screen, and the inspector grows
+   past the viewport instead of scrolling (cutting off Arrange). */
+.workspace > * { min-height: 0; min-width: 0; }
 
 /* ---------------- Slide rail ---------------- */
 
@@ -154,8 +160,12 @@ input, textarea, select { font: inherit; color: inherit; }
     var(--ui-bg);
 }
 .stage-scroll {
-  flex: 1; overflow: auto; display: grid; place-items: center; padding: 28px;
+  flex: 1; min-height: 0;      /* must be able to shrink, or it eats the stage bar */
+  overflow: auto; display: grid; place-items: center; padding: 28px;
 }
+/* place-items:center would clip the top/left of an oversized canvas out of
+   scroll range; safe-centring keeps it reachable when zoomed past the viewport. */
+.stage-scroll > * { margin: auto; }
 .canvas-wrap { position: relative; flex: none; }
 .canvas {
   position: relative; overflow: hidden;

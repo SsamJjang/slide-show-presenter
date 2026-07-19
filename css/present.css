@@ -61,6 +61,9 @@
   opacity: 0; transition: opacity .25s; pointer-events: none;
 }
 .present-root.hud-on .present-hud { opacity: 1; }
+/* Nothing in the presentation surface is focusable — a stray Tab must never
+   put a focus ring or a revealed HUD on the projector. */
+.present-root :focus, .present-root :focus-visible { outline: none !important; }
 
 .hud-progress { height: 3px; background: rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
 .hud-progress i { display: block; height: 100%; background: #fff; border-radius: 2px; transition: width .3s ease; }

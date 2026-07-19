@@ -66,10 +66,39 @@ const Canvas = (() => {
     drawSelection();
   }
 
+  /* Patch only the geometry of the elements currently being manipulated.
+     Rebuilding the slide per pointermove re-decodes every image and re-renders
+     every chart, which is what made dragging a photo unusable. */
+  function patchLive() {
+    const slide = Store.currentSlide();
+    if (!slide) return;
+    Store.sel.els.forEach(id => {
+      const el = slide.elements.find(e => e.id === id);
+      const node = canvas.querySelector(`.el[data-id="${id}"]`);
+      if (!el || !node) return;
+      // Assign only what differs. Rewriting width/height on a large image every
+      // frame re-triggers its scaling work even when the value is identical.
+      const set = (prop, val) => { if (node.style[prop] !== val) node.style[prop] = val; };
+      set('left', el.x + 'px');
+      set('top', el.y + 'px');
+      set('width', el.w + 'px');
+      set('height', el.h + 'px');
+      set('opacity', String(el.opacity));
+      set('transform', el.rot ? `rotate(${el.rot}deg)` : '');
+    });
+    drawSelection();
+  }
+
   /* ---------- coordinate helpers ---------- */
 
+  /* The canvas rect can't change mid-drag, so it's cached on drag start.
+     Reading it per pointermove — right after patchLive has written styles —
+     forces a synchronous layout flush every frame (read-after-write thrash),
+     which is most of what made dragging feel heavy. */
+  let cachedRect = null;
+
   function toDesign(clientX, clientY) {
-    const r = canvas.getBoundingClientRect();
+    const r = cachedRect || canvas.getBoundingClientRect();
     return { x: (clientX - r.left) / scale, y: (clientY - r.top) / scale };
   }
 
@@ -172,6 +201,7 @@ const Canvas = (() => {
     const els = Store.selectedElements().filter(e => !e.locked);
     if (!els.length) return;
 
+    cachedRect = canvas.getBoundingClientRect();
     const start = toDesign(ev.clientX, ev.clientY);
     drag = {
       mode, handle, start,
@@ -210,7 +240,7 @@ const Canvas = (() => {
           const e = elById(o.id);
           if (e) { e.x = Math.round(o.x + dx); e.y = Math.round(o.y + dy); }
         });
-      }, { tag: drag.tag });
+      }, { tag: drag.tag, live: true });
     }
 
     if (drag.mode === 'resize') {
@@ -236,7 +266,7 @@ const Canvas = (() => {
       Store.commit(() => {
         const e = elById(o.id);
         if (e) { e.x = Math.round(x); e.y = Math.round(y); e.w = Math.round(w); e.h = Math.round(hgt); }
-      }, { tag: drag.tag });
+      }, { tag: drag.tag, live: true });
     }
 
     if (drag.mode === 'rotate') {
@@ -247,14 +277,19 @@ const Canvas = (() => {
       Store.commit(() => {
         const e = elById(o.id);
         if (e) e.rot = Math.round(deg);
-      }, { tag: drag.tag });
+      }, { tag: drag.tag, live: true });
     }
   });
 
   window.addEventListener('pointerup', () => {
     if (!drag) return;
+    const moved = drag.moved;
     drag = null;
+    cachedRect = null;
     clearGuides();
+    // Resync the surfaces that were skipped during the live drag (thumbnails,
+    // inspector layout). Nothing to do if this was just a click-to-select.
+    if (moved) Store.settle();
   });
 
   /* ---------- inline text editing ---------- */
@@ -321,10 +356,10 @@ const Canvas = (() => {
     return el;
   }
 
-  function updateSelected(patch, tag) {
+  function updateSelected(patch, tag, live = false) {
     Store.commit(() => {
       Store.selectedElements().forEach(e => Object.assign(e, patch));
-    }, { tag });
+    }, { tag, live });
   }
 
   function deleteSelected() {
@@ -416,7 +451,7 @@ const Canvas = (() => {
   function nudge(dx, dy) {
     Store.commit(() => {
       Store.selectedElements().forEach(e => { e.x += dx; e.y += dy; });
-    }, { tag: 'nudge' });
+    }, { tag: 'nudge', live: true });
   }
 
   /* ---------- paste + drop images ---------- */
@@ -471,7 +506,7 @@ const Canvas = (() => {
   window.addEventListener('resize', () => { if (fitMode) zoomFit(); });
 
   return {
-    render, setScale, zoomFit, zoomBy, drawSelection, isEditing,
+    render, patchLive, setScale, zoomFit, zoomBy, drawSelection, isEditing,
     addElement, updateSelected, deleteSelected, duplicateSelected,
     reorder, align, distribute, nudge, insertImageFile,
     get scale() { return scale; },

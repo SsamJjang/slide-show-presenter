@@ -91,7 +91,12 @@ const Store = (() => {
   const snapshot = () => structuredClone(deck);
   const emit = (reason) => listeners.forEach(fn => fn(reason));
 
-  function commit(mutator, { tag = null, silent = false } = {}) {
+  /* `live` is for continuous interaction — dragging an element, scrubbing a
+     slider. It records history exactly the same way, but emits a 'live' signal
+     so subscribers patch what changed instead of rebuilding everything. A full
+     rebuild per pointermove means re-rendering every thumbnail and destroying
+     the very slider under the user's cursor, which is both slow and broken. */
+  function commit(mutator, { tag = null, silent = false, live = false } = {}) {
     const now = Date.now();
     const coalesce = tag && tag === lastTag && (now - lastCommitAt) < 900;
 
@@ -104,9 +109,13 @@ const Store = (() => {
     lastCommitAt = now;
 
     mutator(deck);
-    if (!silent) emit('commit');
+    if (!silent) emit(live ? 'live' : 'commit');
     return deck;
   }
+
+  /* Call when a live interaction ends, to resync the surfaces that were
+     skipped (thumbnails, inspector layout). */
+  function settle() { lastTag = null; emit('commit'); }
 
   function undo() {
     if (!past.length) return false;
@@ -158,7 +167,7 @@ const Store = (() => {
     get sel() { return sel; },
     get canUndo() { return past.length > 0; },
     get canRedo() { return future.length > 0; },
-    commit, undo, redo, select, gotoSlide,
+    commit, settle, undo, redo, select, gotoSlide,
     currentSlide, selectedElements, snapshot,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     emit,

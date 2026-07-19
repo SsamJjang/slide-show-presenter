@@ -334,6 +334,15 @@ const App = (() => {
       Inspector.render();
       return;
     }
+    // Continuous interaction: patch geometry in place and push new values into
+    // the existing inputs. Rebuilding here would re-decode every image, re-render
+    // all thumbnails, and destroy the control the user is currently dragging.
+    if (reason === 'live') {
+      Canvas.patchLive();
+      Inspector.syncValues();
+      scheduleSave();
+      return;
+    }
     Canvas.render();
     Rail.render();
     Inspector.render();

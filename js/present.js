@@ -240,6 +240,9 @@ const Present = (() => {
     const k = e.key;
 
     if (k === 'Escape')                                   { stop(); e.preventDefault(); return; }
+    // Tab would move focus into the HUD and force it visible (and paint a focus
+    // ring on the projector). There is nothing to focus while presenting.
+    if (k === 'Tab') { e.preventDefault(); return; }
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { next(); e.preventDefault(); return; }
     if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k))       { prev(); e.preventDefault(); return; }
     if (k === 'Home')  { goto(0); e.preventDefault(); return; }
