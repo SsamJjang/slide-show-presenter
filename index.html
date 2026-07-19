@@ -110,6 +110,8 @@
 
 <!-- Presentation surface -->
 <div class="present-root" id="presentRoot" hidden>
+  <!-- Atmosphere lives outside the slide stack so it never restarts on advance. -->
+  <div class="present-atmos" id="presentAtmos"></div>
   <div class="present-stage" id="presentStage"></div>
   <div class="present-hud" id="presentHud">
     <div class="hud-progress"><i id="hudBar"></i></div>
@@ -131,6 +133,7 @@
 <script src="js/backgrounds.js"></script>
 <script src="js/shapes.js"></script>
 <script src="js/motion.js"></script>
+<script src="js/continuity.js"></script>
 <script src="js/store.js"></script>
 <script src="js/render.js"></script>
 <script src="js/charts.js"></script>

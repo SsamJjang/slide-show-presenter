@@ -323,6 +323,9 @@ const LAYOUTS = {
           fill: 'accent2', anim: 'pop', emphasis: 'float', shadow: 'glow' }),
       S({ shape: 'star', sides: 6, innerRatio: .38, radius: 10, x: 90, y: 800,
           w: 150, h: 150, fill: 'accent', anim: 'roll', emphasis: 'spin' }),
+      // The rule that becomes the persistent thread on every later slide.
+      S({ shape: 'rect', x: 230, y: 770, w: 220, h: 6, fill: 'accent', radius: 3,
+          shadow: 'glow', anim: 'wipe' }),
     ],
   },
 
@@ -468,17 +471,54 @@ function starterDeck() {
     return makeSlide({ ...(l.slide || {}), ...extra, elements: l.build(), notes });
   };
 
-  d.slides = [
+  /* A persistent brand mark. The SAME morph tag on every slide means it is
+     never rebuilt — it travels from the giant hero title into a small corner
+     label and then stays put, which is what stops the deck reading as a
+     sequence of unrelated slides. */
+  const mark = (patch = {}) => T({
+    role: 'kicker', text: 'Apex', link: 'brand',
+    x: 140, y: 74, w: 300, h: 54, size: 30, weight: 700,
+    letterSpacing: -.01, color: 'var(--accent)', anim: 'fade', ...patch,
+  });
+
+  /* A rule that stretches and slides between slides — a second continuous
+     thread the eye can follow across a cut. */
+  const rule = (patch = {}) => S({
+    shape: 'rect', link: 'rule', fill: 'accent', radius: 3,
+    x: 140, y: 140, w: 120, h: 4, anim: 'wipe', ...patch,
+  });
+
+  const slides = [
     from('glassHero', 'Pause. Let the title sit for two seconds before you speak.'),
-    from('statement', 'This is the thesis of the whole talk.', { transition: 'zoom', bgPreset: 'spotlight' }),
-    from('product', 'Drop a real screenshot in. Do not narrate the UI — let them look.'),
-    from('metrics', 'Three numbers, revealed one at a time. Stop talking after each.', { transition: 'swipeUp' }),
+    from('statement', 'This is the thesis of the whole talk.', { bgPreset: 'spotlight' }),
+    from('product',   'Drop a real screenshot in. Do not narrate the UI — let them look.'),
+    from('metrics',   'Three numbers, revealed one at a time. Stop talking after each.'),
     from('featureGrid', 'Do not read these aloud. Ten seconds of silence.'),
-    from('bigQuote', 'Let this land. Count to three before the next slide.', { transition: 'iris' }),
-    from('chart', 'Point at the inflection, not the axis.', { bgPreset: 'mesh' }),
-    from('code', 'Read the first line aloud, then let them read the rest.'),
-    from('timeline', 'Roadmap. Be specific about "now", vague about "2027".', { transition: 'reveal' }),
-    from('closing', 'Thank the room. Take questions.', { bgPreset: 'horizon', bgGrain: true }),
+    from('bigQuote',  'Let this land. Count to three before the next slide.'),
+    from('chart',     'Point at the inflection, not the axis.', { bgPreset: 'mesh' }),
+    from('code',      'Read the first line aloud, then let them read the rest.'),
+    from('timeline',  'Roadmap. Be specific about "now", vague about "2027".'),
+    from('closing',   'Thank the room. Take questions.', { bgPreset: 'horizon', bgGrain: true }),
   ];
+
+  /* Magic Move everywhere. With shared elements present on both sides of
+     every cut, this is what makes the deck play as one continuous space
+     rather than ten separate slides. */
+  slides.forEach((s, i) => {
+    s.transition = 'magic';
+    if (i > 0) {
+      s.elements.unshift(mark(), rule());
+    }
+  });
+
+  /* The hero title carries the same tag as the corner mark, so slide 1 -> 2
+     is the signature move: the display type shrinks and flies into place
+     while the next slide's content arrives around it. */
+  const heroTitle = slides[0].elements.find(e => e.type === 'text' && e.finish === 'liquidglass');
+  if (heroTitle) heroTitle.link = 'brand';
+  const heroRule = slides[0].elements.find(e => e.type === 'shape' && e.fill === 'accent' && e.h < 20);
+  if (heroRule) heroRule.link = 'rule';
+
+  d.slides = slides;
   return d;
 }

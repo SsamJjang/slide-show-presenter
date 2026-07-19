@@ -148,18 +148,59 @@ work — a title can drop in with a spring, float gently forever, and sit on a
 slide that arrived with an iris wipe, without any of the three knowing about
 the others:
 
-- **31 entrances** grouped as Basic, Directional, Reveal, Dimensional and
+- **30 entrances** grouped as Basic, Directional, Reveal, Dimensional and
   Energetic — including spring, elastic, drop, roll, unfold, iris, split,
   flip and zoom-blur. Three speeds.
 - **14 emphasis loops** that run for as long as the slide is up: float, bob,
   sway, breathe, pulse, glow, spin, orbit, wobble, tilt, shine, flicker,
   levitate. All deliberately small — anything bigger competes with the person
   speaking.
-- **14 slide transitions**: fade, slide, push, zoom, pull back, blur, iris,
-  cover, reveal, flip, swipe up, dissolve, glitch, cut.
+- **15 slide transitions**: Magic Move, fade, slide, push, zoom, pull back,
+  blur, iris, cover, reveal, flip, swipe up, dissolve, glitch, cut.
 
 Elements arrive in stacking order with a 55ms stagger. Everything respects
 `prefers-reduced-motion`, and every loop is frozen in thumbnails and print.
+
+## Continuity — why it plays as one space
+
+The single thing that separates a modern keynote from a slideshow is that it
+does not feel like separate slides. Two mechanisms, and the first matters
+more than people expect.
+
+**The atmosphere does not belong to a slide.** It is hoisted out of the slide
+stack and lives above it for the whole talk, cross-dissolving only when the
+look actually changes — and even then the blooms keep drifting on their own
+uninterrupted clocks. Nothing ever restarts. The eye tracks the continuous
+field and reads the content as moving *within* a space rather than as a cut
+between two of them. On its own this removes most of the "slides playing
+separately" feeling.
+
+**Magic Move.** Anything present on both sides of a cut is not destroyed and
+rebuilt — it travels. Position, size and scale are interpolated from where it
+was to where it is going. A title that shrinks out of a hero and flies into
+the corner while the next slide's content arrives around it is the signature
+move, and it is this.
+
+Matching is automatic: identical text, the same image, the same shape. Set a
+**morph tag** on two elements to force a pairing the matcher wouldn't find on
+its own. The starter deck carries a brand mark and an accent rule through all
+ten slides so you can see it immediately.
+
+Unmatched content is deliberately offset in time — the old recedes over the
+first half, the new arrives on a delay — so the *movement leads* and the
+changes follow. Doing both at once just reads as a cross-fade.
+
+All of it is driven by the Web Animations API rather than CSS transitions: a
+transition cannot start on an element inserted in the same frame (it has no
+previous computed style to move away from), and the usual reflow nudge is
+unreliable. `element.animate()` takes an explicit from/to and returns a
+finished promise, so cleanup is exact rather than a timeout racing the
+animation.
+
+**The standalone HTML export does all of this too** — persistent atmosphere
+and Magic Move included, with the geometry baked into `data-*` attributes so
+the exported player needs no deck model. What you rehearse is what plays on
+someone else's laptop.
 
 ### Text formatting
 

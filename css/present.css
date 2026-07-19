@@ -14,6 +14,33 @@
    second offset on top of that and push the slide off screen. */
 .present-stage { position: absolute; inset: 0; }
 
+/* ---------------- Persistent atmosphere ----------------
+
+   The background is hoisted out of the slide stack and lives here for the
+   whole presentation. Slides render transparent on top of it, so advancing
+   never resets the drift — which is the difference between "a sequence of
+   slides" and "one continuous space". */
+.present-atmos {
+  position: absolute; inset: 0;
+  background: var(--bg, #0a0a0c);
+  overflow: hidden;
+  z-index: 0;
+}
+.atmos-layer { position: absolute; inset: 0; }
+
+/* Slides sit above the atmosphere and contribute no background of their own.
+   Their per-slide layers are suppressed rather than not rendered, so the
+   exact same markup still works in the editor, the rail and the export. */
+.present-stage .slide { background: transparent !important; }
+.present-stage .slide > .slide-bg,
+.present-stage .slide > .slide-bg-overlay,
+.present-stage .slide > .slide-grain,
+.present-stage .slide > .slide-vignette { display: none; }
+.present-stage { z-index: 1; }
+
+/* Elements travelling between slides sit above the ones that are leaving. */
+.present-stage .el.magic { z-index: 2; }
+
 /* ---------------- Transitions ----------------
    Each slide enters with the transition stored on it. Kept short
    (380ms) — anything longer reads as sluggish from the audience. */

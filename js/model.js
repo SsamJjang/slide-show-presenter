@@ -64,6 +64,7 @@ function makeElement(type, patch = {}) {
     anim: 'rise',           // entrance — see Motion.ENTRANCES
     emphasis: 'none',       // looping behaviour — see Motion.EMPHASIS
     animSpeed: 'normal',    // fast | normal | slow
+    link: '',               // Magic Move tag — same tag on two slides = one travelling object
   };
   return Object.assign(base, structuredClone(ELEMENT_DEFAULTS[type] || {}), patch);
 }

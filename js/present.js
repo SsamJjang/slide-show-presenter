@@ -11,6 +11,7 @@ const Present = (() => {
   const root  = document.getElementById('presentRoot');
   const stage = document.getElementById('presentStage');
   const blank = document.getElementById('presentBlank');
+  const atmos = document.getElementById('presentAtmos');
   const hudNum = document.getElementById('hudNum');
   const hudBar = document.getElementById('hudBar');
   const hudTimer = document.getElementById('hudTimer');
@@ -50,6 +51,8 @@ const Present = (() => {
     active = false;
     root.hidden = true;
     stage.innerHTML = '';
+    atmos.innerHTML = '';
+    delete atmos.dataset.atmos;
     blank.hidden = true;
     clearInterval(tick);
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -60,7 +63,7 @@ const Present = (() => {
 
   /* ---------- rendering ---------- */
 
-  function show(i, transition) {
+  function show(i, transition, { fromIndex = null } = {}) {
     const slide = slides()[i];
     if (!slide) return;
 
@@ -70,8 +73,46 @@ const Present = (() => {
     node.style.left = ((window.innerWidth - DESIGN_W * s) / 2) + 'px';
     node.style.top  = ((window.innerHeight - DESIGN_H * s) / 2) + 'px';
 
-    const prev = stage.querySelector('.slide-host');
+    /* A presenter clicking faster than the transition must never stack
+       slides. Any host still animating from an earlier advance is collapsed
+       immediately, leaving exactly one to transition out of. querySelector
+       would also have returned the OLDEST host here, not the current one. */
+    const existing = [...stage.querySelectorAll('.slide-host')];
+    while (existing.length > 1) existing.shift().remove();
+    const prev = existing[0] || null;
+
     const t = transition || slide.transition || 'fade';
+
+    // The atmosphere is continuous across the whole talk — it cross-dissolves
+    // only when the look actually changes, and never restarts its motion.
+    Continuity.syncAtmosphere(atmos, slide, { immediate: !prev });
+
+    /* --- Magic Move ---
+       Only worth doing when there is a previous slide AND something on it to
+       carry over. With no matches it degrades to the ordinary cross-fade,
+       which is exactly what a plain transition would have done anyway. */
+    const prevSlide = fromIndex != null ? slides()[fromIndex] : null;
+    const matches = (t === 'magic' && prev && prevSlide)
+      ? Continuity.pairs(prevSlide, slide) : [];
+
+    if (t === 'magic' && prev) {
+      stage.appendChild(node);
+      const move = Continuity.magicMove(prev, node, matches);
+      const finish = () => {
+        prev.remove();
+        // Only settle if this host is still the live one — a faster advance
+        // may already have replaced it, and settling a superseded host would
+        // strip the styles the new transition is relying on.
+        if (node.isConnected) Continuity.settleHost(node);
+      };
+      move.done.then(finish);
+      // Backstop: animations don't run in a backgrounded tab, so the promise
+      // may never settle. Never leave two hosts stacked.
+      setTimeout(finish, move.duration + 400);
+      updateHud();
+      syncPresenter();
+      return;
+    }
 
     if (prev && t !== 'none') {
       prev.classList.add('exit-' + t);
@@ -109,23 +150,26 @@ const Present = (() => {
     const slide = slides()[index];
     if (step < Render.maxBuild(slide)) { step++; refreshBuild(); return; }
     if (index >= slides().length - 1) return;
+    const from = index;
     index++; step = 0;
-    show(index);
+    show(index, null, { fromIndex: from });
   }
 
   function prev() {
     if (step > 0) { step--; refreshBuild(); return; }
     if (index <= 0) return;
+    const from = index;
     index--;
     // Land on the fully-built version of the previous slide, not its first step.
     step = Render.maxBuild(slides()[index]);
-    show(index);
+    show(index, null, { fromIndex: from });
   }
 
   function goto(i) {
+    const from = index;
     index = Math.max(0, Math.min(slides().length - 1, i));
     step = 0;
-    show(index);
+    show(index, null, { fromIndex: from });
   }
 
   /* ---------- HUD + timer ---------- */

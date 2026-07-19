@@ -84,6 +84,9 @@ const Motion = (() => {
   ];
 
   const TRANSITIONS = [
+    // Magic Move first: it's the one that makes a deck feel continuous,
+    // so it should be the obvious default rather than buried in a list.
+    ['magic',    'Magic Move'],
     ['none',     'Cut'],
     ['fade',     'Fade'],
     ['slide',    'Slide'],

@@ -218,6 +218,18 @@ const Inspector = (() => {
       </div>
     `);
 
+    out += section('Magic Move', `
+      <div class="field stack"><label>Morph tag</label>
+        <input class="inp" data-key="link" value="${Render.esc(e.link || '')}"
+          placeholder="e.g. hero-title">
+      </div>
+      <div class="insp-sub" style="margin-top:2px">
+        Give the same tag to an element on the next slide and it will travel
+        between them instead of being replaced. Matching text, images and
+        shapes are paired automatically — a tag is only needed to override that.
+      </div>
+    `);
+
     out += section('Build order', `
       <div class="field"><label>Reveal at</label>
         <select class="inp" data-key="build">

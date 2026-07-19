@@ -78,6 +78,7 @@ const Persist = (() => {
         e.anim ??= 'none';
         e.emphasis ??= 'none';
         e.animSpeed ||= 'normal';
+        e.link ??= '';
         // The old boolean glass flag became a named material.
         if (e.material === undefined) e.material = e.glass ? 'glass' : 'none';
         delete e.glass;
