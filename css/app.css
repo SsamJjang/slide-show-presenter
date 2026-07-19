@@ -5,6 +5,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* The `hidden` attribute hides via `display:none` in the UA stylesheet, which
+   ANY author `display` rule silently outranks. Several things here are
+   display:grid/flex and toggled with .hidden — without this they stay visible.
+   (The presentation overlay is a fullscreen black box, so losing this rule
+   blacks out the entire app.) */
+[hidden] { display: none !important; }
+
 :root {
   --ui-bg:      #0b0c10;
   --ui-panel:   #131519;

@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Apex Deck — Presentation Studio</title>
 <link rel="stylesheet" href="css/app.css">
-<link rel="stylesheet" href="css/themes.css">
 <link rel="stylesheet" href="css/present.css">
+<!-- Slide styling is injected from js/slide-css.js so the exporter can embed
+     it without fetch(), which is blocked on file:// pages. -->
 </head>
 <body>
 
@@ -122,6 +123,7 @@
 
 <input type="file" id="filePicker" hidden>
 
+<script src="js/slide-css.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/model.js"></script>
 <script src="js/store.js"></script>

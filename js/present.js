@@ -164,8 +164,8 @@ const Present = (() => {
     pv.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
       <title>Presenter View</title>
       <link rel="stylesheet" href="${location.href.replace(/[^/]*$/, '')}css/app.css">
-      <link rel="stylesheet" href="${location.href.replace(/[^/]*$/, '')}css/themes.css">
       <link rel="stylesheet" href="${location.href.replace(/[^/]*$/, '')}css/present.css">
+      <style>${SLIDE_CSS}</style>
       </head><body class="pv-body">
         <div class="pv-top">
           <div class="pv-timer" id="pvTimer">00:00</div>

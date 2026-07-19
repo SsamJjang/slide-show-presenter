@@ -1,15 +1,20 @@
-/* ===========================================================
-   Slide surface styling.
+/* ============================================================
+   Slide surface styling — as a JS string, deliberately.
 
-   Everything here is driven by CSS custom properties that the
-   active theme sets. No hard-coded slide colours — that's what
-   makes swapping a theme restyle the whole deck instantly.
+   This is the CSS that draws an actual slide, and it has to travel:
+   the editor uses it, the presenter window uses it, and every
+   exported HTML file embeds a copy so it plays with no other files
+   beside it.
 
-   Fonts are named-first, system-fallback. Nothing is fetched over
-   the network, so a deck renders identically on a conference wifi
-   that has already given up.
-   =========================================================== */
+   It lives in JS rather than a .css file because the export path
+   would otherwise have to fetch() it — and fetch() is blocked on
+   file:// pages. Since opening index.html directly is a first-class
+   way to run this app, a stylesheet the exporter can't read would
+   silently produce completely unstyled decks. One source of truth,
+   readable from anywhere, no build step.
+   ============================================================ */
 
+const SLIDE_CSS = `
 .slide-host {
   position: relative;
   transform-origin: top left;
@@ -124,4 +129,14 @@ img.e-image { width: 100%; height: 100%; display: block; }
     overflow: hidden;
   }
   .print-page:last-child { page-break-after: auto; }
+}
+`;
+
+/* Inject into a document (the app itself, or the presenter window). */
+function injectSlideCSS(doc = document) {
+  if (doc.getElementById('slide-css')) return;
+  const style = doc.createElement('style');
+  style.id = 'slide-css';
+  style.textContent = SLIDE_CSS;
+  doc.head.appendChild(style);
 }

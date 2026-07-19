@@ -96,9 +96,9 @@ progressive disclosure works the way you expect when you're live.
 ```
 index.html
 css/   app.css      editor chrome
-       themes.css   slide surface + print rules
        present.css  presentation + presenter view
-js/    model.js     deck model, undo history
+js/    slide-css.js slide surface + print rules (see note below)
+       model.js     deck model, undo history
        store.js     autosave + recovery
        render.js    the single slide renderer
        charts.js    SVG charts, no chart library
@@ -110,6 +110,12 @@ js/    model.js     deck model, undo history
        exporter.js  HTML / PDF / JSON
        app.js       wiring, keyboard, modals
 ```
+
+The slide styling lives in `js/slide-css.js` as a string rather than in a
+`.css` file. It has to be embedded into every exported HTML deck, and
+`fetch()` is blocked on `file://` pages — so a stylesheet would have meant
+exports came out unstyled whenever you'd opened `index.html` directly. One
+source of truth that every path can read, with no build step.
 
 ## Known limits
 

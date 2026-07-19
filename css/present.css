@@ -5,12 +5,14 @@
 .present-root {
   position: fixed; inset: 0; z-index: 500;
   background: #000;
-  display: grid; place-items: center;
   overflow: hidden; cursor: none;
 }
 .present-root.show-cursor { cursor: default; }
 
-.present-stage { position: relative; }
+/* Must fill the viewport, not shrink-wrap. The renderer positions each slide
+   host with viewport-relative left/top, so any centring here would apply a
+   second offset on top of that and push the slide off screen. */
+.present-stage { position: absolute; inset: 0; }
 
 /* ---------------- Transitions ----------------
    Each slide enters with the transition stored on it. Kept short

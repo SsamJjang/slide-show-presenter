@@ -47,21 +47,13 @@ const Exporter = (() => {
 
   /* ---------- standalone HTML ---------- */
 
-  async function inlineCSS() {
-    // Fetch our own stylesheets so the export is genuinely self-contained.
-    const files = ['css/themes.css'];
-    const parts = await Promise.all(files.map(async f => {
-      try { return await (await fetch(f)).text(); }
-      catch { return ''; }
-    }));
-    return parts.join('\n');
-  }
-
-  async function exportHTML() {
+  function exportHTML() {
     const deck = Store.deck;
     const theme = THEMES[deck.theme] || THEMES.obsidian;
     const themeVars = Object.entries(theme.vars).map(([k, v]) => `${k}:${v}`).join(';');
-    const css = await inlineCSS();
+    // Straight from the constant — no fetch, so this works identically whether
+    // the editor was opened over http or as a local file.
+    const css = SLIDE_CSS;
 
     const slidesHTML = deck.slides
       .map(s => `<section class="pg">${Render.slideHTML(s, deck)}</section>`).join('\n');

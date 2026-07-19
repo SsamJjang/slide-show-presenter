@@ -344,6 +344,7 @@ const App = (() => {
   /* ---------- boot ---------- */
 
   function boot() {
+    injectSlideCSS();
     hydrateIcons(document.body);
 
     const saved = Persist.load();
