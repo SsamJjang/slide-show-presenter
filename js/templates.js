@@ -304,14 +304,14 @@ const LAYOUTS = {
      text in boxes. Each sets its own background preset via `slide`. */
 
   hero: {
-    name: 'Hero', hint: 'Luminous opener', slide: { bgPreset: 'mesh', bgGrain: true },
+    name: 'Hero', hint: 'Liquid opener', slide: { bgPreset: 'mesh', bgMotion: 'orbit', bgSpeed: .8, bgGrain: true },
     build: () => [
       T({ role: 'kicker', text: 'INTRODUCING', x: MARGIN, y: 330, w: CONTENT_W, h: 56,
           size: 28, weight: 700, letterSpacing: .22, uppercase: true,
           color: 'var(--accent)', anim: 'fade' }),
       T({ role: 'display', text: 'Apex', x: MARGIN, y: 396, w: CONTENT_W, h: 260,
           size: 210, weight: 800, lineHeight: 1.0, letterSpacing: -.045,
-          finish: 'gloss', anim: 'blur' }),
+          finish: 'liquid', anim: 'blur' }),
       T({ role: 'subtitle', text: 'The fastest way to ship intelligence.',
           x: MARGIN, y: 672, w: 1200, h: 80, size: 42, color: 'var(--muted)', anim: 'rise' }),
       S({ shape: 'rect', x: MARGIN, y: 790, w: 220, h: 6, fill: 'accent', radius: 3,
@@ -320,7 +320,7 @@ const LAYOUTS = {
   },
 
   product: {
-    name: 'Product shot', hint: 'Browser mockup + copy', slide: { bgPreset: 'spotlight' },
+    name: 'Product shot', hint: 'Browser mockup + copy', slide: { bgPreset: 'spotlight', bgMotion: 'breathe' },
     build: () => [
       T({ role: 'kicker', text: 'THE PRODUCT', x: MARGIN, y: 150, w: 700, h: 50,
           size: 24, weight: 700, letterSpacing: .2, uppercase: true, color: 'var(--accent)' }),
@@ -334,7 +334,7 @@ const LAYOUTS = {
   },
 
   metrics: {
-    name: 'Metric trio', hint: 'Three glass stat cards', slide: { bgPreset: 'mesh' },
+    name: 'Metric trio', hint: 'Three glass stat cards', slide: { bgPreset: 'nebula', bgMotion: 'drift' },
     build: () => {
       const stats = [['12ms', 'median latency'], ['99.99%', 'uptime'], ['0', 'config files']];
       const out = [
@@ -346,7 +346,7 @@ const LAYOUTS = {
         out.push(S({ shape: 'rect', x, y: 380, w: 500, h: 380, glass: true, radius: 28,
                      anim: 'rise', build: i === 0 ? 0 : i }));
         out.push(T({ role: 'display', text: big, x: x + 48, y: 460, w: 404, h: 150,
-                     size: 96, weight: 800, letterSpacing: -.04, finish: 'gloss',
+                     size: 96, weight: 800, letterSpacing: -.04, finish: 'chrome',
                      anim: 'rise', build: i === 0 ? 0 : i }));
         out.push(T({ role: 'caption', text: small, x: x + 48, y: 620, w: 404, h: 60,
                      size: 28, color: 'var(--muted)', anim: 'rise', build: i === 0 ? 0 : i }));
@@ -356,7 +356,7 @@ const LAYOUTS = {
   },
 
   featureGrid: {
-    name: 'Feature grid', hint: 'Six capabilities', slide: { bgPreset: 'grid' },
+    name: 'Feature grid', hint: 'Six capabilities', slide: { bgPreset: 'grid', bgMotion: 'drift' },
     build: () => {
       const feats = [
         ['Realtime', 'Streams by default'], ['Private', 'Runs on device'],
@@ -381,7 +381,7 @@ const LAYOUTS = {
   },
 
   phone: {
-    name: 'Phone', hint: 'Mobile product shot', slide: { bgPreset: 'horizon' },
+    name: 'Phone', hint: 'Mobile product shot', slide: { bgPreset: 'horizon', bgMotion: 'flow' },
     build: () => [
       makeElement('mockup', { kind: 'phone', x: 220, y: 150, w: 440, h: 880,
         shadow: 'dramatic', anim: 'rise' }),
@@ -393,7 +393,7 @@ const LAYOUTS = {
   },
 
   timeline: {
-    name: 'Timeline', hint: 'Roadmap / milestones', slide: { bgPreset: 'dots' },
+    name: 'Timeline', hint: 'Roadmap / milestones', slide: { bgPreset: 'dots', bgMotion: 'drift' },
     build: () => {
       const steps = [['Now', 'Private beta'], ['Q3', 'Public launch'],
                      ['Q4', 'Enterprise'], ['2027', 'Platform']];
@@ -419,11 +419,11 @@ const LAYOUTS = {
 
   bigQuote: {
     name: 'Spotlight quote', hint: 'Dramatic testimonial',
-    slide: { bgPreset: 'spotlight', bgVignette: true, transition: 'zoom' },
+    slide: { bgPreset: 'spotlight', bgMotion: 'breathe', bgVignette: true, transition: 'zoom' },
     build: () => [
       T({ role: 'display', text: '"This replaced\nfour vendors."',
           x: MARGIN, y: 300, w: CONTENT_W, h: 400, size: 100, weight: 700,
-          lineHeight: 1.12, letterSpacing: -.03, valign: 'middle', finish: 'gloss', anim: 'blur' }),
+          lineHeight: 1.12, letterSpacing: -.03, valign: 'middle', finish: 'shimmer', anim: 'blur' }),
       T({ role: 'caption', text: 'CTO · a company you have heard of',
           x: MARGIN, y: 760, w: 1100, h: 60, size: 30, color: 'var(--muted)', anim: 'fade', build: 1 }),
     ],

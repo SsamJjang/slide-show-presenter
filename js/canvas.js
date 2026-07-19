@@ -72,6 +72,16 @@ const Canvas = (() => {
   function patchLive() {
     const slide = Store.currentSlide();
     if (!slide) return;
+
+    // Re-time the background in place. Rebuilding the layers would restart
+    // every bloom from zero on each slider step, which reads as a stutter.
+    const speed = slide.bgSpeed || 1;
+    canvas.querySelectorAll('.bg-blob').forEach(b => {
+      b.style.animationDuration = (+b.dataset.dur / speed).toFixed(1) + 's';
+      b.style.animationDelay = (+b.dataset.delay / speed).toFixed(1) + 's';
+    });
+    const ov = canvas.querySelector('.slide-bg-overlay');
+    if (ov) ov.style.animationDuration = (70 / speed).toFixed(1) + 's';
     Store.sel.els.forEach(id => {
       const el = slide.elements.find(e => e.id === id);
       const node = canvas.querySelector(`.el[data-id="${id}"]`);

@@ -185,7 +185,7 @@ const SLIDE_CSS = `
 
 /* Freeze the moving fills at a readable point rather than wherever the
    animation happened to stop. */
-.thumb-frame .finish-liquid,  .print-mode .finish-liquid  { background-position: 50% 50%; }
+.thumb-frame .finish-liquid, .print-mode .finish-liquid  { background-position: 50% 50%; }
 .thumb-frame .finish-shimmer, .print-mode .finish-shimmer { background-position: 150% 50%, 0 0; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -226,25 +226,25 @@ const SLIDE_CSS = `
    degrades to a solid readable colour if the clip is unsupported — the
    failure mode is never invisible text. */
 
-.e-text[class*="finish-"]:not(.finish-none) {
+.finish-gradient, .finish-gloss, .finish-chrome, .finish-liquid, .finish-shimmer {
   color: var(--accent);
   -webkit-background-clip: text; background-clip: text;
 }
 @supports (-webkit-background-clip: text) or (background-clip: text) {
-  .e-text[class*="finish-"]:not(.finish-none):not(.finish-frost):not(.finish-emboss) {
+  .finish-gradient, .finish-gloss, .finish-chrome, .finish-liquid, .finish-shimmer {
     color: transparent; -webkit-text-fill-color: transparent;
   }
 }
 
 /* Flat two-colour accent sweep — the quiet one. */
-.e-text.finish-gradient {
+.finish-gradient {
   background-image: var(--accent-gradient, linear-gradient(115deg, var(--accent), var(--accent2)));
 }
 
 /* Gloss: bright crown, saturated core, and a reflected lift at the baseline.
    The hard stop at 52% is the specular break that makes it read as a curved,
    lit surface rather than a soft fade. */
-.e-text.finish-gloss {
+.finish-gloss {
   background-image: linear-gradient(180deg,
     #ffffff 0%,
     color-mix(in srgb, var(--accent) 55%, #fff) 30%,
@@ -257,7 +257,7 @@ const SLIDE_CSS = `
 
 /* Chrome: neutral metal, no hue. The tight light/dark inversion at the
    midline is the whole trick — that's the horizon reflecting in the bevel. */
-.e-text.finish-chrome {
+.finish-chrome {
   background-image: linear-gradient(180deg,
     #fdfdfe 0%, #d4d9e0 26%, #9aa1ab 49%,
     #5f666f 50%, #aeb5bf 56%, #eef1f5 78%, #c3c9d2 100%);
@@ -266,7 +266,7 @@ const SLIDE_CSS = `
 
 /* Liquid: a wide, over-sized gradient slowly sliding under the glyphs, so
    the colour appears to pour through the letterforms. */
-.e-text.finish-liquid {
+.finish-liquid {
   background-image: linear-gradient(100deg,
     var(--accent) 0%,
     color-mix(in srgb, var(--accent) 40%, #fff) 18%,
@@ -286,7 +286,7 @@ const SLIDE_CSS = `
 
 /* Shimmer: a single specular band crossing an otherwise solid fill, with a
    long pause between passes so it reads as a catch of light, not a loop. */
-.e-text.finish-shimmer {
+.finish-shimmer {
   background-image:
     linear-gradient(105deg, transparent 42%, rgba(255,255,255,.92) 50%, transparent 58%),
     var(--accent-gradient, linear-gradient(115deg, var(--accent), var(--accent2)));
@@ -301,7 +301,7 @@ const SLIDE_CSS = `
 
 /* Frost: etched into glass. Keeps a real (translucent) fill colour rather
    than clipping, so it stays legible over a busy background. */
-.e-text.finish-frost {
+.finish-frost {
   color: color-mix(in srgb, var(--ink) 72%, transparent);
   background: none;
   text-shadow:
@@ -312,7 +312,7 @@ const SLIDE_CSS = `
 
 /* Emboss: pressed into the surface. Costs nothing and reads well in print,
    where every animated finish flattens to a still frame anyway. */
-.e-text.finish-emboss {
+.finish-emboss {
   color: var(--ink);
   background: none;
   text-shadow:
@@ -321,7 +321,7 @@ const SLIDE_CSS = `
 }
 
 /* Outline: weight without mass — good over photography. */
-.e-text.finish-outline {
+.finish-outline {
   color: transparent;
   -webkit-text-fill-color: transparent;
   -webkit-text-stroke: 2px var(--accent);

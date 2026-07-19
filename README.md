@@ -87,16 +87,45 @@ accent rather than being neutral grey, which is most of why a finished deck
 reads as one thing. The picker shows the derived ramp and warns you if
 accent-on-background falls under 3:1.
 
-**Depth.** Nine background presets — spotlight, mesh, aurora, grid, dots,
-rays, horizon, duotone — plus optional film grain and vignette. Grain is
-worth turning on for large gradients: it's the cheapest fix for the banding
-projectors introduce.
+**Depth that moves.** Ten background presets — spotlight, mesh, aurora,
+nebula, grid, dots, rays, horizon, duotone. Each is built from several
+colour blooms that drift *independently*, on deliberately mismatched
+durations, so the background never visibly loops or resets. Five motion
+modes (Still, Drift, Breathe, Flow, Orbit) and a tempo dial. Every bloom
+animates `transform` only, so the whole system runs on the compositor —
+it costs nothing during a talk. Plus optional film grain and vignette;
+grain is worth turning on for large gradients, since it's the cheapest fix
+for the banding projectors introduce.
+
+Set Motion to **Still** if the talk is being filmed, or if the room needs
+the calm.
 
 **Materials.** Glass panels (real backdrop blur with an inset top highlight),
-five elevation levels including an accent glow, gradient-filled display type,
-and browser / window / phone device frames for product shots. A screenshot
-in a real chrome reads as a shipped product; the same image floating on a
-slide reads as a wireframe.
+five elevation levels including an accent glow, and browser / window / phone
+device frames for product shots. A screenshot in a real chrome reads as a
+shipped product; the same image floating on a slide reads as a wireframe.
+
+**Text finishes.** Nine treatments for display type, picked from swatches
+that render the actual finish:
+
+| | |
+|---|---|
+| **Gradient** | Flat two-colour accent sweep. The quiet one. |
+| **Gloss** | Bright crown, saturated core, reflected lift at the baseline. The hard specular break at the midline is what makes it read as a lit, curved surface. |
+| **Chrome** | Neutral metal. The tight light/dark inversion at the midline is the horizon reflecting in the bevel. |
+| **Liquid** | An oversized gradient sliding under the glyphs, so colour appears to pour through the letterforms. Animated. |
+| **Shimmer** | A single specular band crossing the fill, with a long pause between passes so it reads as a catch of light rather than a loop. Animated. |
+| **Frost** | Etched into glass — translucent, legible over busy backgrounds. |
+| **Emboss** | Pressed into the surface. Prints well. |
+| **Outline** | Weight without mass. Good over photography. |
+
+These are **not** the default, deliberately. A glossy headline against plain
+body copy is a focal point; a deck where everything shimmers is a deck where
+nothing does. Use one per slide, on the biggest thing.
+
+Every finish degrades to a solid readable colour if its clip isn't
+supported — the failure mode is never invisible text, and there's a test
+asserting exactly that across all 120 theme/layout combinations.
 
 **Choreography.** Elements arrive in stacking order with a 55ms stagger, each
 with its own entrance — rise, fade, blur, scale, or wipe. This is the part

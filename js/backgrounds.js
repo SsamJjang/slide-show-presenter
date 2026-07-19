@@ -142,7 +142,10 @@ const Backgrounds = (() => {
         // Negative delays start each bloom mid-path, so nothing "begins"
         // when the slide appears — the background is already in motion.
         const delay = ((b.delay || -i * 7) / speed).toFixed(1);
-        return `<i class="bg-blob" style="--x:${b.x}%;--y:${b.y}%;--w:${b.w}%;--h:${b.h}%;
+        // Base tempo is kept on the node so the tempo slider can re-time the
+        // animation in place, without rebuilding (which would restart it).
+        return `<i class="bg-blob" data-dur="${b.dur}" data-delay="${b.delay || -i * 7}"
+          style="--x:${b.x}%;--y:${b.y}%;--w:${b.w}%;--h:${b.h}%;
           background:radial-gradient(closest-side, var(--${b.tint}) 0%, transparent 100%);
           animation-duration:${dur}s;animation-delay:${delay}s"></i>`;
       }).join('');

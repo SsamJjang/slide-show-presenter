@@ -67,6 +67,10 @@ const Inspector = (() => {
 
   function render() {
     const els = Store.selectedElements();
+    // The finish swatches render the real treatment, so the panel needs the
+    // deck's colour variables. Editor chrome uses --ui-* names, so there's
+    // no collision with these.
+    applyTheme(root, Store.deck.theme, Store.deck);
     root.innerHTML = els.length ? elementPanel(els) : slidePanel();
     hydrateIcons(root);
     wire();
@@ -91,14 +95,22 @@ const Inspector = (() => {
       `)}
 
       ${section('Atmosphere', `
-        ${chips('Background', 'bgPreset', slide.bgPreset || 'none',
+        ${chips('Depth', 'bgPreset', slide.bgPreset || 'none',
           Object.entries(Backgrounds.PRESETS).map(([k, v]) => [k, v.name]))}
+        ${chips('Motion', 'bgMotion', slide.bgMotion || 'drift',
+          Object.entries(Backgrounds.MOTIONS).map(([k, v]) => [k, v.name]))}
+        <div class="field"><label>Tempo</label>
+          <input class="inp" type="range" data-slidenum="bgSpeed"
+            value="${slide.bgSpeed || 1}" min=".25" max="3" step=".05">
+          <span class="rangeval" style="width:34px;text-align:right;color:var(--ui-muted)">${
+            (slide.bgSpeed || 1).toFixed(2)}×</span></div>
         <div class="btnrow" style="margin-top:8px">
           <button class="btn ${slide.bgGrain ? 'on' : ''}" data-slidetoggle="bgGrain">Grain</button>
           <button class="btn ${slide.bgVignette ? 'on' : ''}" data-slidetoggle="bgVignette">Vignette</button>
         </div>
         <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:8px">
-          Backgrounds are built from the deck's accent, so they can never clash.
+          The blooms drift on separate clocks so the background never visibly
+          loops. All built from the deck's accent, so they can't clash.
         </div>
       `)}
 
@@ -242,7 +254,18 @@ const Inspector = (() => {
     <div class="btnrow">
       <button class="btn ${e.italic ? 'on' : ''}" data-toggle="italic">Italic</button>
       <button class="btn ${e.uppercase ? 'on' : ''}" data-toggle="uppercase">UPPER</button>
-      <button class="btn ${e.gradient ? 'on' : ''}" data-toggle="gradient" title="Accent gradient fill">Gradient</button>
+    </div>
+  `) + section('Finish', `
+    <div class="fin-grid" data-chips="finish">
+      ${[['none', 'Plain'], ['gradient', 'Gradient'], ['gloss', 'Gloss'], ['chrome', 'Chrome'],
+         ['liquid', 'Liquid'], ['shimmer', 'Shimmer'], ['frost', 'Frost'],
+         ['emboss', 'Emboss'], ['outline', 'Outline']].map(([v, label]) =>
+        `<button class="chip fin ${(e.finish || 'none') === v ? 'on' : ''}" data-val="${v}">
+           <span class="fin-prev finish-${v}">Ag</span><em>${label}</em></button>`).join('')}
+    </div>
+    <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:9px">
+      Liquid and Shimmer animate while presenting. Use one per slide, on the
+      biggest thing — if everything shines, nothing does.
     </div>
   `);
 
@@ -362,7 +385,7 @@ const Inspector = (() => {
         if (!b) return;
         const key = box.dataset.chips;
         // Slide-level properties live on the slide, not the selected element.
-        if (['transition', 'bgPreset'].includes(key)) {
+        if (['transition', 'bgPreset', 'bgMotion'].includes(key)) {
           Store.commit(() => { Store.currentSlide()[key] = b.dataset.val; });
         } else {
           upd({ [key]: b.dataset.val });
@@ -391,6 +414,19 @@ const Inspector = (() => {
         const cur = Store.selectedElements()[0]?.[key];
         upd({ [key]: !cur });
       });
+    });
+
+    // slide-level numbers (background tempo) — live so the scrub stays smooth
+    root.querySelectorAll('[data-slidenum]').forEach(inp => {
+      const key = inp.dataset.slidenum;
+      inp.addEventListener('input', () => {
+        const v = parseFloat(inp.value);
+        if (Number.isNaN(v)) return;
+        const label = inp.parentElement.querySelector('.rangeval');
+        if (label) label.textContent = v.toFixed(2) + '×';
+        Store.commit(() => { Store.currentSlide()[key] = v; }, { tag: 'slide-' + key, live: true });
+      });
+      inp.addEventListener('change', () => Store.settle());
     });
 
     // slide-level booleans (grain, vignette)
