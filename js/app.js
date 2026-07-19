@@ -55,7 +55,7 @@ const App = (() => {
     // Live-render a real preview of each layout in the current theme.
     sheetPanel.querySelectorAll('[data-prev]').forEach(box => {
       const slide = makeSlide({ elements: LAYOUTS[box.dataset.prev].build() });
-      applyTheme(box, Store.deck.theme);
+      applyTheme(box, Store.deck.theme, Store.deck);
       const w = box.clientWidth || 190;
       box.appendChild(Render.slideNode(slide, Store.deck, { scale: w / DESIGN_W }));
     });
@@ -78,15 +78,77 @@ const App = (() => {
         <div class="card-meta"><b>${t.name}${key === Store.deck.theme ? ' ✓' : ''}</b><span>${t.mood}</span></div>
       </button>`).join('');
 
+    const deck = Store.deck;
+    const accent = deck.accent || (THEMES[deck.theme] || THEMES.obsidian).vars['--accent'];
+    const SUGGESTED = ['#5b8cff', '#7c5cff', '#00d3a7', '#ff5c8a', '#ff8a3d', '#31c8ff', '#c8542a', '#00e08f'];
+
     openSheet(`
       <h2>Theme</h2>
       <p class="sub">Applies to every slide at once. Anything you coloured with a palette swatch follows along; explicit hex colours stay put.</p>
-      <div class="card-grid">${cards}</div>`);
+      <div class="card-grid">${cards}</div>
+
+      <h2 style="margin-top:26px">Accent</h2>
+      <p class="sub">Pick one colour. The secondary, the glows, the backgrounds, the
+        chart series and the surface tints are all derived from it — so the deck reads
+        as one designed system instead of a pile of choices.</p>
+
+      <div class="accent-row">
+        <input type="color" id="accentPick" value="${accent}" title="Custom accent">
+        ${SUGGESTED.map(c => `<button class="sw ${c.toLowerCase() === String(deck.accent).toLowerCase() ? 'on' : ''}"
+          data-accent="${c}" style="background:${c}" title="${c}"></button>`).join('')}
+        <button class="btn" data-accent="" style="max-width:120px">Theme default</button>
+      </div>
+
+      <div class="field" style="margin-top:14px;max-width:340px">
+        <label>Harmony</label>
+        <select class="inp" id="harmonyPick">
+          ${Object.entries(Palette.HARMONIES).map(([k, v]) =>
+            `<option value="${k}"${(deck.harmony || 'analogous') === k ? ' selected' : ''}>${v.name}</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="accentPreview" class="accent-preview"></div>`);
+
+    const renderAccentPreview = () => {
+      const box = sheetPanel.querySelector('#accentPreview');
+      if (!box) return;
+      const t = THEMES[Store.deck.theme] || THEMES.obsidian;
+      const src = Store.deck.accent || t.vars['--accent'];
+      const p = Palette.derive(src, { harmony: Store.deck.harmony || 'analogous', dark: t.dark !== false });
+      const a = Palette.audit(p);
+      const chip = (label, col) =>
+        `<div class="ap-chip"><i style="background:${col}"></i><span>${label}</span></div>`;
+      box.innerHTML =
+        chip('Accent', p.accent) + chip('Secondary', p.accent2) + chip('Third', p.accent3) +
+        chip('Surface', p.bgLift) + chip('Text', p.ink) + chip('Muted', p.muted) +
+        `<div class="ap-note ${a.ok ? 'ok' : 'warn'}">
+          ${a.ok ? '✓ Contrast passes for large text and body copy'
+                 : `⚠ Accent on background is ${a.accentOnBg.toFixed(1)}:1 — aim for 3:1 or higher`}
+        </div>`;
+    };
+    renderAccentPreview();
+
+    const setAccent = (hex) => {
+      Store.commit(d => { d.accent = hex || null; });
+      renderAccentPreview();
+    };
+    sheetPanel.querySelectorAll('[data-accent]').forEach(b =>
+      b.addEventListener('click', () => {
+        sheetPanel.querySelectorAll('.sw').forEach(s => s.classList.remove('on'));
+        if (b.dataset.accent) b.classList.add('on');
+        setAccent(b.dataset.accent);
+      }));
+    sheetPanel.querySelector('#accentPick')?.addEventListener('input', (e) =>
+      setAccent(e.target.value));
+    sheetPanel.querySelector('#harmonyPick')?.addEventListener('change', (e) => {
+      Store.commit(d => { d.harmony = e.target.value; });
+      renderAccentPreview();
+    });
 
     // Preview each theme using the deck's own first slide — you see your content, not a stock mock.
     const sample = Store.currentSlide() || Store.deck.slides[0];
     sheetPanel.querySelectorAll('[data-tprev]').forEach(box => {
-      applyTheme(box, box.dataset.tprev);
+      applyTheme(box, box.dataset.tprev, Store.deck);
       const w = box.clientWidth || 190;
       box.appendChild(Render.slideNode(sample, Store.deck, { scale: w / DESIGN_W }));
     });
@@ -176,7 +238,18 @@ const App = (() => {
     pickHandler = null;
   });
 
-  const pickImage = () => pickFile('image/*', f => Canvas.insertImageFile(f));
+  /* If a mockup or image is selected, fill that element rather than dropping a
+     new one on top of it — picking a file from inside those panels clearly
+     means "use this here". */
+  const pickImage = () => pickFile('image/*', async (f) => {
+    const sel = Store.selectedElements()[0];
+    if (sel && (sel.type === 'mockup' || sel.type === 'image')) {
+      const src = await Canvas.fileToDataURL(f);
+      Canvas.updateSelected({ src });
+      return;
+    }
+    Canvas.insertImageFile(f);
+  });
 
   /* ---------- toolbar ---------- */
 
@@ -220,6 +293,7 @@ const App = (() => {
       chart: { w: 1200, h: 620 },
       code:  { w: 1200, h: 500 },
       table: { w: 1200, h: 400 },
+      mockup:{ w: 1100, h: 700, shadow: 'dramatic' },
     };
     Canvas.addElement(type, presets[type] || {});
   }
@@ -324,7 +398,7 @@ const App = (() => {
     document.querySelector('[data-act="undo"]').disabled = !Store.canUndo;
     document.querySelector('[data-act="redo"]').disabled = !Store.canRedo;
 
-    applyTheme(document.getElementById('canvas'), Store.deck.theme);
+    applyTheme(document.getElementById('canvas'), Store.deck.theme, Store.deck);
   }
 
   Store.subscribe((reason) => {
@@ -359,7 +433,7 @@ const App = (() => {
     const saved = Persist.load();
     Store.deck = saved || starterDeck();
 
-    applyTheme(document.getElementById('canvas'), Store.deck.theme);
+    applyTheme(document.getElementById('canvas'), Store.deck.theme, Store.deck);
     Canvas.zoomFit();
     Canvas.render();
     Rail.render();

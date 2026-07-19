@@ -51,6 +51,7 @@ Press `?` in the app for the full keyboard list. The essentials:
 | | |
 |---|---|
 | Insert text / shape / image / chart | `T` `S` `I` `C` |
+| Insert device mockup | toolbar |
 | Edit text | double-click it |
 | Nudge / big nudge | arrows / `Shift` arrows |
 | Constrain drag, or lock aspect on resize | hold `Shift` |
@@ -60,15 +61,47 @@ Press `?` in the app for the full keyboard list. The essentials:
 Elements snap to each other, to slide centre, and to the 140px margin grid,
 with guides shown live.
 
-**13 layouts** ship pre-composed with a real typographic scale — title,
-statement, section, big number, three-up, two-column, quote, chart, code,
-full-bleed image, table, closing, blank. They are not empty boxes; replace
-the words and the slide is already designed.
+**20 layouts** ship pre-composed with a real typographic scale. Alongside the
+basics (title, statement, section, big number, quote, chart, code, closing)
+there are premium ones built on the systems below — Hero, Product shot,
+Metric trio, Feature grid, Phone, Timeline, Spotlight quote. They are not
+empty boxes; replace the words and the slide is already designed.
 
 **6 themes** — Obsidian, Paper, Aurora, Slate, Carbon, Ivory. Switching
 restyles the entire deck at once. Anything coloured with a palette swatch
 follows the theme; anything you set to an explicit hex value stays put.
 That distinction is deliberate — it's what makes themes safe to try.
+
+## What makes a deck look designed
+
+Four systems, and they're the reason this doesn't come out looking like a
+template. All of them are pure CSS built from theme variables, so they cost
+nothing to render, scale to any projector, and survive the HTML export.
+
+**One accent, everything derived.** Pick a single colour in the Theme sheet
+and the secondary, the third chart series, the glows, the surface tints and
+even the background are computed from it — with hue rotations damped through
+the yellow-green band and lightness compensated per hue, because equal steps
+in HSL are not equal steps to the eye. Backgrounds carry a trace of the
+accent rather than being neutral grey, which is most of why a finished deck
+reads as one thing. The picker shows the derived ramp and warns you if
+accent-on-background falls under 3:1.
+
+**Depth.** Nine background presets — spotlight, mesh, aurora, grid, dots,
+rays, horizon, duotone — plus optional film grain and vignette. Grain is
+worth turning on for large gradients: it's the cheapest fix for the banding
+projectors introduce.
+
+**Materials.** Glass panels (real backdrop blur with an inset top highlight),
+five elevation levels including an accent glow, gradient-filled display type,
+and browser / window / phone device frames for product shots. A screenshot
+in a real chrome reads as a shipped product; the same image floating on a
+slide reads as a wireframe.
+
+**Choreography.** Elements arrive in stacking order with a 55ms stagger, each
+with its own entrance — rise, fade, blur, scale, or wipe. This is the part
+that's genuinely tedious to reproduce by hand in PowerPoint, where it's a
+per-object animation pane. Respects `prefers-reduced-motion`.
 
 ### Text formatting
 
@@ -98,6 +131,8 @@ index.html
 css/   app.css      editor chrome
        present.css  presentation + presenter view
 js/    slide-css.js slide surface + print rules (see note below)
+       palette.js   colour engine — derives a full palette from one accent
+       backgrounds.js  nine depth presets, grain, vignette
        model.js     deck model, undo history
        store.js     autosave + recovery
        render.js    the single slide renderer

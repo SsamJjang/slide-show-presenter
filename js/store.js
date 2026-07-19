@@ -54,10 +54,15 @@ const Persist = (() => {
     deck.version = deck.version || 1;
     deck.ratio = deck.ratio || '16:9';
     deck.theme = THEMES[deck.theme] ? deck.theme : 'obsidian';
+    deck.harmony ||= 'analogous';
+    deck.accent ??= null;
     deck.slides.forEach(s => {
       s.id ||= uid();
       s.transition ||= 'fade';
       s.notes ??= '';
+      s.bgPreset ||= 'none';
+      s.bgGrain ??= false;
+      s.bgVignette ??= false;
       s.elements ||= [];
       s.elements.forEach(e => {
         e.id ||= uid();
@@ -65,6 +70,10 @@ const Persist = (() => {
         e.rot ??= 0;
         e.build ??= 0;
         e.shadow ??= 'none';
+        // v2 additions. Older elements default to no motion so reopening an
+        // existing deck doesn't silently start animating in a way its author
+        // never chose — new elements opt in via the model default.
+        e.anim ??= 'none';
       });
     });
     return deck;

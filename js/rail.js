@@ -87,7 +87,10 @@ const Rail = (() => {
   /* ---------- slide operations ---------- */
 
   function addSlide(layoutKey = 'bullets', at = null) {
-    const slide = makeSlide({ elements: (LAYOUTS[layoutKey] || LAYOUTS.blank).build() });
+    const layout = LAYOUTS[layoutKey] || LAYOUTS.blank;
+    // A layout may carry slide-level design (background preset, transition),
+    // not just elements — that's what makes the premium ones look composed.
+    const slide = makeSlide({ ...(layout.slide || {}), elements: layout.build() });
     const index = at ?? Store.sel.slide + 1;
     Store.commit(d => d.slides.splice(index, 0, slide));
     Store.gotoSlide(index);
@@ -98,7 +101,9 @@ const Rail = (() => {
     const layout = LAYOUTS[layoutKey];
     if (!layout) return;
     Store.commit(() => {
-      Store.currentSlide().elements = layout.build();
+      const s = Store.currentSlide();
+      s.elements = layout.build();
+      Object.assign(s, layout.slide || {});
     });
     Store.select([]);
   }

@@ -22,10 +22,16 @@ const ELEMENT_DEFAULTS = {
     size: 44, weight: 400, align: 'left', valign: 'top',
     color: null,            // null = inherit from theme
     lineHeight: 1.25, letterSpacing: 0, italic: false, uppercase: false,
+    gradient: false,        // luminous accent→accent2 fill for display type
   },
   shape: {
     shape: 'rect',          // rect | ellipse | triangle | line | arrow
     fill: 'accent', stroke: null, strokeWidth: 0, radius: 16,
+    glass: false,           // frosted translucent panel with a hairline edge
+  },
+  mockup: {
+    kind: 'browser',        // browser | phone | window
+    src: '', url: 'apex.dev', radius: 18,
   },
   image: { src: '', fit: 'cover', radius: 0, alt: '' },
   code:  { code: 'const ship = () => true;', lang: 'js', size: 26, showLines: true },
@@ -47,8 +53,9 @@ function makeElement(type, patch = {}) {
     id: uid(), type,
     x: 200, y: 200, w: 600, h: 200,
     rot: 0, opacity: 1, locked: false, hidden: false,
-    shadow: 'none',         // none | soft | lifted | dramatic
+    shadow: 'none',         // none | soft | lifted | dramatic | glow
     build: 0,               // 0 = always visible, 1+ = reveal step
+    anim: 'rise',           // entrance motion: none | rise | fade | blur | scale | wipe
   };
   return Object.assign(base, structuredClone(ELEMENT_DEFAULTS[type] || {}), patch);
 }
@@ -58,6 +65,9 @@ function makeSlide(patch = {}) {
     id: uid(),
     elements: [],
     bg: null,               // null = theme background
+    bgPreset: 'none',       // see Backgrounds.PRESETS
+    bgGrain: false,         // film grain overlay, stops large gradients banding
+    bgVignette: false,
     transition: 'fade',     // fade | slide | push | zoom | none
     notes: '',
   }, patch);
@@ -65,9 +75,11 @@ function makeSlide(patch = {}) {
 
 function makeDeck() {
   return {
-    version: 1,
+    version: 2,
     title: 'Untitled Deck',
     theme: 'obsidian',
+    accent: null,           // hex override — derives the whole palette
+    harmony: 'analogous',   // how the secondary is derived from the accent
     ratio: '16:9',
     slides: [],
   };

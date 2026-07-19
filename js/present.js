@@ -35,7 +35,7 @@ const Present = (() => {
     startedAt = Date.now();
 
     root.hidden = false;
-    applyTheme(root, Store.deck.theme);
+    applyTheme(root, Store.deck.theme, Store.deck);
     show(index, null);
     startTimer();
 
@@ -85,6 +85,13 @@ const Present = (() => {
     }
 
     stage.appendChild(node);
+
+    // Choreographed entrance, only in presentation. Removed once it has run so
+    // that later build reveals on this slide transition normally instead of
+    // replaying the whole stagger.
+    node.classList.add('entering');
+    setTimeout(() => node.classList.remove('entering'), 1200);
+
     updateHud();
     syncPresenter();
   }
@@ -209,7 +216,7 @@ const Present = (() => {
     const cur = slides()[index];
     const nxt = slides()[index + 1];
 
-    applyTheme(doc.body, Store.deck.theme);
+    applyTheme(doc.body, Store.deck.theme, Store.deck);
 
     const fill = (hostId, slide, buildStep) => {
       const host = doc.getElementById(hostId);

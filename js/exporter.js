@@ -49,8 +49,10 @@ const Exporter = (() => {
 
   function exportHTML() {
     const deck = Store.deck;
-    const theme = THEMES[deck.theme] || THEMES.obsidian;
-    const themeVars = Object.entries(theme.vars).map(([k, v]) => `${k}:${v}`).join(';');
+    // Same variable map the editor applies, including any derived accent
+    // palette — otherwise the export silently loses the deck's colour system.
+    const themeVars = Object.entries(computeThemeVars(deck.theme, deck))
+      .map(([k, v]) => `${k}:${v}`).join(';');
     // Straight from the constant — no fetch, so this works identically whether
     // the editor was opened over http or as a local file.
     const css = SLIDE_CSS;
@@ -117,7 +119,7 @@ fit();show(0);
     const root = document.createElement('div');
     root.className = 'print-root print-mode';
     root.style.display = 'none';
-    applyTheme(root, deck.theme);
+    applyTheme(root, deck.theme, deck);
 
     deck.slides.forEach(s => {
       const page = document.createElement('div');

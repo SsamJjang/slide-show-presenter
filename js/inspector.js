@@ -90,8 +90,20 @@ const Inspector = (() => {
           [['none', 'None'], ['fade', 'Fade'], ['slide', 'Slide'], ['push', 'Push'], ['zoom', 'Zoom']])}
       `)}
 
-      ${section('Background', `
-        <div class="field"><label>Colour</label>
+      ${section('Atmosphere', `
+        ${chips('Background', 'bgPreset', slide.bgPreset || 'none',
+          Object.entries(Backgrounds.PRESETS).map(([k, v]) => [k, v.name]))}
+        <div class="btnrow" style="margin-top:8px">
+          <button class="btn ${slide.bgGrain ? 'on' : ''}" data-slidetoggle="bgGrain">Grain</button>
+          <button class="btn ${slide.bgVignette ? 'on' : ''}" data-slidetoggle="bgVignette">Vignette</button>
+        </div>
+        <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:8px">
+          Backgrounds are built from the deck's accent, so they can never clash.
+        </div>
+      `)}
+
+      ${section('Background colour', `
+        <div class="field"><label>Override</label>
           <input type="color" data-slidebg value="${slide.bg && /^#/.test(slide.bg) ? slide.bg : '#0a0a0c'}">
           <button class="btn" data-act="clearBg">Use theme</button>
         </div>
@@ -159,10 +171,21 @@ const Inspector = (() => {
     if (e.type === 'code'  && !many) out += codeSection(e);
     if (e.type === 'chart' && !many) out += chartSection(e);
     if (e.type === 'table' && !many) out += tableSection(e);
+    if (e.type === 'mockup' && !many) out += mockupSection(e);
 
     out += section('Effects', `
       ${chips('Shadow', 'shadow', e.shadow,
-        [['none', 'None'], ['soft', 'Soft'], ['lifted', 'Lifted'], ['dramatic', 'Dramatic']])}
+        [['none', 'None'], ['soft', 'Soft'], ['lifted', 'Lifted'],
+         ['dramatic', 'Dramatic'], ['glow', 'Glow']])}
+    `);
+
+    out += section('Motion', `
+      ${chips('Entrance', 'anim', e.anim || 'rise',
+        [['rise', 'Rise'], ['fade', 'Fade'], ['blur', 'Blur'],
+         ['scale', 'Scale'], ['wipe', 'Wipe'], ['none', 'None']])}
+      <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:8px">
+        Elements arrive in stacking order with a 55ms stagger when the slide appears.
+      </div>
     `);
 
     out += section('Build order', `
@@ -219,12 +242,17 @@ const Inspector = (() => {
     <div class="btnrow">
       <button class="btn ${e.italic ? 'on' : ''}" data-toggle="italic">Italic</button>
       <button class="btn ${e.uppercase ? 'on' : ''}" data-toggle="uppercase">UPPER</button>
+      <button class="btn ${e.gradient ? 'on' : ''}" data-toggle="gradient" title="Accent gradient fill">Gradient</button>
     </div>
   `);
 
   const shapeSection = (e) => section('Shape', `
     ${chips('Kind', 'shape', e.shape,
       [['rect', 'Rect'], ['ellipse', 'Ellipse'], ['triangle', 'Triangle'], ['line', 'Line'], ['arrow', 'Arrow']])}
+    <div class="btnrow" style="margin-bottom:8px">
+      <button class="btn ${e.glass ? 'on' : ''}" data-toggle="glass"
+        title="Frosted translucent panel">Glass panel</button>
+    </div>
     ${swatches('Fill', 'fill', e.fill)}
     ${swatches('Stroke', 'stroke', e.stroke)}
     ${num('Stroke width', 'strokeWidth', e.strokeWidth, { min: 0, max: 40 })}
@@ -265,6 +293,20 @@ const Inspector = (() => {
       <button class="btn ${e.showGrid ? 'on' : ''}" data-toggle="showGrid">Grid</button>
       <button class="btn ${e.showValues ? 'on' : ''}" data-toggle="showValues">Values</button>
     </div>
+  `);
+
+  const mockupSection = (e) => section('Device', `
+    ${chips('Frame', 'kind', e.kind,
+      [['browser', 'Browser'], ['window', 'Window'], ['phone', 'Phone']])}
+    <div class="field stack"><label>Screenshot</label>
+      <input class="inp" data-key="src" value="${Render.esc(e.src)}" placeholder="https://… or drop a file">
+    </div>
+    <div class="btnrow" style="margin-bottom:8px">
+      <button class="btn" data-act="pickImage">Choose file…</button>
+    </div>
+    ${e.kind === 'browser' ? `<div class="field stack"><label>URL bar</label>
+      <input class="inp" data-key="url" value="${Render.esc(e.url)}"></div>` : ''}
+    ${e.kind !== 'phone' ? num('Corner radius', 'radius', e.radius, { min: 0, max: 60 }) : ''}
   `);
 
   const tableSection = (e) => section('Table', `
@@ -319,8 +361,9 @@ const Inspector = (() => {
         const b = ev.target.closest('button');
         if (!b) return;
         const key = box.dataset.chips;
-        if (key === 'transition') {
-          Store.commit(() => { Store.currentSlide().transition = b.dataset.val; });
+        // Slide-level properties live on the slide, not the selected element.
+        if (['transition', 'bgPreset'].includes(key)) {
+          Store.commit(() => { Store.currentSlide()[key] = b.dataset.val; });
         } else {
           upd({ [key]: b.dataset.val });
         }
@@ -347,6 +390,14 @@ const Inspector = (() => {
         const key = b.dataset.toggle;
         const cur = Store.selectedElements()[0]?.[key];
         upd({ [key]: !cur });
+      });
+    });
+
+    // slide-level booleans (grain, vignette)
+    root.querySelectorAll('[data-slidetoggle]').forEach(b => {
+      b.addEventListener('click', () => {
+        const key = b.dataset.slidetoggle;
+        Store.commit(() => { const s = Store.currentSlide(); s[key] = !s[key]; });
       });
     });
 
