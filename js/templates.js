@@ -311,7 +311,7 @@ const LAYOUTS = {
           color: 'var(--accent)', anim: 'fade' }),
       T({ role: 'display', text: 'Apex', x: MARGIN, y: 396, w: CONTENT_W, h: 260,
           size: 210, weight: 800, lineHeight: 1.0, letterSpacing: -.045,
-          gradient: true, anim: 'blur' }),
+          finish: 'gloss', anim: 'blur' }),
       T({ role: 'subtitle', text: 'The fastest way to ship intelligence.',
           x: MARGIN, y: 672, w: 1200, h: 80, size: 42, color: 'var(--muted)', anim: 'rise' }),
       S({ shape: 'rect', x: MARGIN, y: 790, w: 220, h: 6, fill: 'accent', radius: 3,
@@ -346,7 +346,7 @@ const LAYOUTS = {
         out.push(S({ shape: 'rect', x, y: 380, w: 500, h: 380, glass: true, radius: 28,
                      anim: 'rise', build: i === 0 ? 0 : i }));
         out.push(T({ role: 'display', text: big, x: x + 48, y: 460, w: 404, h: 150,
-                     size: 96, weight: 800, letterSpacing: -.04, gradient: true,
+                     size: 96, weight: 800, letterSpacing: -.04, finish: 'gloss',
                      anim: 'rise', build: i === 0 ? 0 : i }));
         out.push(T({ role: 'caption', text: small, x: x + 48, y: 620, w: 404, h: 60,
                      size: 28, color: 'var(--muted)', anim: 'rise', build: i === 0 ? 0 : i }));
@@ -386,7 +386,7 @@ const LAYOUTS = {
       makeElement('mockup', { kind: 'phone', x: 220, y: 150, w: 440, h: 880,
         shadow: 'dramatic', anim: 'rise' }),
       T({ role: 'title', text: 'In your pocket', x: 800, y: 380, w: 900, h: 140,
-          size: 82, weight: 700, letterSpacing: -.03, gradient: true }),
+          size: 82, weight: 700, letterSpacing: -.03, finish: 'gloss' }),
       T({ role: 'body', text: 'The same engine, the same latency,\non the device you already carry.',
           x: 800, y: 540, w: 900, h: 180, size: 34, lineHeight: 1.5, color: 'var(--muted)', build: 1 }),
     ],
@@ -423,7 +423,7 @@ const LAYOUTS = {
     build: () => [
       T({ role: 'display', text: '"This replaced\nfour vendors."',
           x: MARGIN, y: 300, w: CONTENT_W, h: 400, size: 100, weight: 700,
-          lineHeight: 1.12, letterSpacing: -.03, valign: 'middle', gradient: true, anim: 'blur' }),
+          lineHeight: 1.12, letterSpacing: -.03, valign: 'middle', finish: 'gloss', anim: 'blur' }),
       T({ role: 'caption', text: 'CTO · a company you have heard of',
           x: MARGIN, y: 760, w: 1100, h: 60, size: 30, color: 'var(--muted)', anim: 'fade', build: 1 }),
     ],

@@ -22,7 +22,7 @@ const ELEMENT_DEFAULTS = {
     size: 44, weight: 400, align: 'left', valign: 'top',
     color: null,            // null = inherit from theme
     lineHeight: 1.25, letterSpacing: 0, italic: false, uppercase: false,
-    gradient: false,        // luminous accent→accent2 fill for display type
+    finish: 'none',         // see Text finishes: gradient|gloss|chrome|liquid|shimmer|frost|emboss|outline
   },
   shape: {
     shape: 'rect',          // rect | ellipse | triangle | line | arrow
@@ -66,6 +66,8 @@ function makeSlide(patch = {}) {
     elements: [],
     bg: null,               // null = theme background
     bgPreset: 'none',       // see Backgrounds.PRESETS
+    bgMotion: 'drift',      // how the depth moves: none|drift|breathe|flow|orbit
+    bgSpeed: 1,             // tempo multiplier for that motion
     bgGrain: false,         // film grain overlay, stops large gradients banding
     bgVignette: false,
     transition: 'fade',     // fade | slide | push | zoom | none

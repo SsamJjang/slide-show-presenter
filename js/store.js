@@ -61,6 +61,8 @@ const Persist = (() => {
       s.transition ||= 'fade';
       s.notes ??= '';
       s.bgPreset ||= 'none';
+      s.bgMotion ||= 'drift';
+      s.bgSpeed ||= 1;
       s.bgGrain ??= false;
       s.bgVignette ??= false;
       s.elements ||= [];
@@ -74,6 +76,9 @@ const Persist = (() => {
         // existing deck doesn't silently start animating in a way its author
         // never chose — new elements opt in via the model default.
         e.anim ??= 'none';
+        // v1 carried a boolean; v2 has a named finish.
+        if (e.finish === undefined) e.finish = e.gradient ? 'gradient' : 'none';
+        delete e.gradient;
       });
     });
     return deck;

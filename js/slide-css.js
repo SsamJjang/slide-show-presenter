@@ -47,7 +47,68 @@ const SLIDE_CSS = `
 
 .slide-bg, .slide-bg-overlay, .slide-grain, .slide-vignette {
   position: absolute; inset: 0; pointer-events: none;
+  overflow: hidden;
 }
+
+/* Each bloom is its own element so it can move on its own clock. Animating
+   transform/opacity only keeps all of this on the compositor — no repaint,
+   no layout, nothing that can stutter a live talk. */
+.bg-blob {
+  position: absolute;
+  left: var(--x); top: var(--y);
+  width: var(--w); height: var(--h);
+  transform: translate(-50%, -50%);
+  animation-timing-function: cubic-bezier(.45,.05,.55,.95);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform, opacity;
+}
+/* Every keyframe re-states the centring translate, since transform is a
+   single property and the animation would otherwise drop it. */
+.slide-bg[data-motion="none"] .bg-blob { animation: none; }
+
+.slide-bg[data-motion="drift"] .bg-blob { animation-name: bgDrift; }
+@keyframes bgDrift {
+  0%   { transform: translate(-50%,-50%) translate(0,0)          scale(1);    opacity: .92; }
+  50%  { transform: translate(-50%,-50%) translate(6%, -4%)      scale(1.12); opacity: 1; }
+  100% { transform: translate(-50%,-50%) translate(-5%, 5%)      scale(.96);  opacity: .86; }
+}
+
+.slide-bg[data-motion="breathe"] .bg-blob { animation-name: bgBreathe; }
+@keyframes bgBreathe {
+  0%   { transform: translate(-50%,-50%) scale(.92); opacity: .78; }
+  100% { transform: translate(-50%,-50%) scale(1.18); opacity: 1; }
+}
+
+.slide-bg[data-motion="flow"] .bg-blob { animation-name: bgFlow; }
+@keyframes bgFlow {
+  0%   { transform: translate(-50%,-50%) translate(-12%, 8%)  scale(1.04); }
+  100% { transform: translate(-50%,-50%) translate(12%, -8%)  scale(1.14); }
+}
+
+/* Orbit is the most alive: a real circular path, so the blooms never
+   retrace the same line. Direction is not alternated — it just keeps going. */
+.slide-bg[data-motion="orbit"] .bg-blob {
+  animation-name: bgOrbit;
+  animation-direction: normal;
+  animation-timing-function: linear;
+}
+@keyframes bgOrbit {
+  0%   { transform: translate(-50%,-50%) rotate(0deg)   translateX(7%) rotate(0deg)    scale(1.06); }
+  100% { transform: translate(-50%,-50%) rotate(360deg) translateX(7%) rotate(-360deg) scale(1.06); }
+}
+
+/* Patterned overlays get their own motion: grids and dots pan, rays rotate. */
+.slide-bg-overlay[data-omotion="pan"] {
+  animation: bgPan linear infinite;
+}
+@keyframes bgPan { to { background-position: 240px 160px, 240px 160px; } }
+
+.slide-bg-overlay[data-omotion="spin"] {
+  animation: bgSpin linear infinite;
+  transform-origin: 50% 0%;
+}
+@keyframes bgSpin { to { transform: rotate(360deg); } }
 .slide-grain {
   opacity: .05; mix-blend-mode: overlay;
   background-repeat: repeat; background-size: 180px 180px;
@@ -112,6 +173,27 @@ const SLIDE_CSS = `
 .thumb-frame .slide-vignette { display: none !important; }
 .thumb-frame .el { filter: none !important; }   /* drop-shadows too */
 
+/* Nothing in a thumbnail or a printed page may animate. Ten looping
+   backgrounds in the rail would burn the GPU for pixels nobody can see,
+   and a shimmer caught mid-pass would print as a white gash. */
+.thumb-frame .bg-blob,
+.thumb-frame .slide-bg-overlay,
+.thumb-frame .e-text,
+.print-mode .bg-blob,
+.print-mode .slide-bg-overlay,
+.print-mode .e-text { animation: none !important; }
+
+/* Freeze the moving fills at a readable point rather than wherever the
+   animation happened to stop. */
+.thumb-frame .finish-liquid,  .print-mode .finish-liquid  { background-position: 50% 50%; }
+.thumb-frame .finish-shimmer, .print-mode .finish-shimmer { background-position: 150% 50%, 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob, .slide-bg-overlay, .e-text { animation: none !important; }
+  .finish-liquid { background-position: 50% 50%; }
+  .finish-shimmer { background-position: 150% 50%, 0 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .slide-host.entering .el { animation: none !important; }
   .el { transition-duration: .01ms !important; }
@@ -133,15 +215,117 @@ const SLIDE_CSS = `
 .role-display, .role-title, .role-subtitle, .role-kicker { font-family: var(--font-display); }
 .role-caption { color: var(--muted); }
 
-/* Luminous display type. Falls back to solid --accent anywhere the clip
-   isn't supported, rather than rendering invisible text. */
-.e-text.grad {
+/* ---------------- Text finishes ----------------
+
+   Optional treatments for display type. These are deliberately NOT the
+   default: a glossy headline against a plain body is a focal point, and
+   a deck where everything shimmers is a deck where nothing does. Use one
+   per slide, on the largest thing.
+
+   All of them paint a background and clip it to the glyphs, so every one
+   degrades to a solid readable colour if the clip is unsupported — the
+   failure mode is never invisible text. */
+
+.e-text[class*="finish-"]:not(.finish-none) {
   color: var(--accent);
-  background: var(--accent-gradient, linear-gradient(115deg, var(--accent), var(--accent2)));
   -webkit-background-clip: text; background-clip: text;
 }
 @supports (-webkit-background-clip: text) or (background-clip: text) {
-  .e-text.grad { color: transparent; -webkit-text-fill-color: transparent; }
+  .e-text[class*="finish-"]:not(.finish-none):not(.finish-frost):not(.finish-emboss) {
+    color: transparent; -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Flat two-colour accent sweep — the quiet one. */
+.e-text.finish-gradient {
+  background-image: var(--accent-gradient, linear-gradient(115deg, var(--accent), var(--accent2)));
+}
+
+/* Gloss: bright crown, saturated core, and a reflected lift at the baseline.
+   The hard stop at 52% is the specular break that makes it read as a curved,
+   lit surface rather than a soft fade. */
+.e-text.finish-gloss {
+  background-image: linear-gradient(180deg,
+    #ffffff 0%,
+    color-mix(in srgb, var(--accent) 55%, #fff) 30%,
+    var(--accent) 51%,
+    color-mix(in srgb, var(--accent2) 82%, #000) 52%,
+    var(--accent2) 74%,
+    color-mix(in srgb, var(--accent2) 60%, #fff) 100%);
+  filter: drop-shadow(0 2px 1px rgba(0,0,0,.28));
+}
+
+/* Chrome: neutral metal, no hue. The tight light/dark inversion at the
+   midline is the whole trick — that's the horizon reflecting in the bevel. */
+.e-text.finish-chrome {
+  background-image: linear-gradient(180deg,
+    #fdfdfe 0%, #d4d9e0 26%, #9aa1ab 49%,
+    #5f666f 50%, #aeb5bf 56%, #eef1f5 78%, #c3c9d2 100%);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+}
+
+/* Liquid: a wide, over-sized gradient slowly sliding under the glyphs, so
+   the colour appears to pour through the letterforms. */
+.e-text.finish-liquid {
+  background-image: linear-gradient(100deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 40%, #fff) 18%,
+    var(--accent2) 38%,
+    color-mix(in srgb, var(--accent2) 45%, #fff) 55%,
+    var(--accent) 74%,
+    color-mix(in srgb, var(--accent) 35%, #fff) 88%,
+    var(--accent2) 100%);
+  background-size: 320% 100%;
+  animation: txLiquid 9s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 18px var(--glow));
+}
+@keyframes txLiquid {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Shimmer: a single specular band crossing an otherwise solid fill, with a
+   long pause between passes so it reads as a catch of light, not a loop. */
+.e-text.finish-shimmer {
+  background-image:
+    linear-gradient(105deg, transparent 42%, rgba(255,255,255,.92) 50%, transparent 58%),
+    var(--accent-gradient, linear-gradient(115deg, var(--accent), var(--accent2)));
+  background-size: 280% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: txShimmer 5.5s cubic-bezier(.5,0,.5,1) infinite;
+}
+@keyframes txShimmer {
+  0%, 62% { background-position: 150% 50%, 0 0; }
+  100%    { background-position: -50% 50%, 0 0; }
+}
+
+/* Frost: etched into glass. Keeps a real (translucent) fill colour rather
+   than clipping, so it stays legible over a busy background. */
+.e-text.finish-frost {
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  background: none;
+  text-shadow:
+    0 1px 0 color-mix(in srgb, #fff 45%, transparent),
+    0 0 26px var(--glow),
+    0 12px 30px rgba(0,0,0,.28);
+}
+
+/* Emboss: pressed into the surface. Costs nothing and reads well in print,
+   where every animated finish flattens to a still frame anyway. */
+.e-text.finish-emboss {
+  color: var(--ink);
+  background: none;
+  text-shadow:
+    0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 -1px 0 rgba(0,0,0,.45);
+}
+
+/* Outline: weight without mass — good over photography. */
+.e-text.finish-outline {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2px var(--accent);
+  background: none;
 }
 
 /* shapes */
