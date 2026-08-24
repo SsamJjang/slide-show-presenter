@@ -100,10 +100,11 @@ const Canvas = (() => {
       // this element's inner markup. Replacing the node would restart its
       // animations; re-rendering the slide would cost far more.
       if (pendingBody) {
-        node.innerHTML = Render.elementBody(el);
-        if (el.shadow && el.shadow !== 'none') {
-          node.style.filter = `drop-shadow(${Render.SHADOWS[el.shadow]})`;
-        }
+        // Into the innermost motion layer, not .el — writing to .el would
+        // wipe out the entrance and emphasis wrappers along with the body.
+        Render.bodyNode(node).innerHTML = Render.elementBody(el);
+        node.style.filter = el.shadow && el.shadow !== 'none'
+          ? `drop-shadow(${Render.SHADOWS[el.shadow]})` : '';
       }
     });
     pendingBody = false;

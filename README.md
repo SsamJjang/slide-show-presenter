@@ -88,15 +88,49 @@ accent rather than being neutral grey, which is most of why a finished deck
 reads as one thing. The picker shows the derived ramp and warns you if
 accent-on-background falls under 3:1.
 
+**Every gradient is built, not declared.** A two-stop CSS gradient is
+interpolated in sRGB, and sRGB is not perceptually uniform, so it fails in
+two ways at once: the middle of a two-hue ramp sags dark and grey, and a long
+ramp across a near-black slide bands into visible stripes the moment it hits
+a projector. So the intermediate colours are computed here, in Oklab, and
+emitted as explicit stops.
+
+Blending is polar (chroma-preserving) along the short hue arc up to 110°, and
+rectangular beyond it. That cutoff is deliberate: polar blending keeps a
+brand gradient as saturated in the middle as at its ends, but past a certain
+arc it starts touring the colour wheel — orange to teal via polar blending
+runs through magenta and purple, which is a rainbow, not a gradient. Past the
+cutoff it passes through a clean neutral instead, at the right lightness.
+It's the difference between a complementary harmony being usable and being a
+novelty.
+
+The same machinery de-bands the slide backgrounds, and it emits plain hex, so
+an export can't lose its gradients on a browser without the newer CSS colour
+syntax.
+
 **Depth that moves.** Ten background presets — spotlight, mesh, aurora,
 nebula, grid, dots, rays, horizon, duotone. Each is built from several
 colour blooms that drift *independently*, on deliberately mismatched
 durations, so the background never visibly loops or resets. Five motion
 modes (Still, Drift, Breathe, Flow, Orbit) and a tempo dial. Every bloom
 animates `transform` only, so the whole system runs on the compositor —
-it costs nothing during a talk. Plus optional film grain and vignette;
-grain is worth turning on for large gradients, since it's the cheapest fix
-for the banding projectors introduce.
+it costs nothing during a talk. The patterned presets move by transform
+too: panning a tiled gradient by `background-position` instead repaints
+the entire slide every frame, which is the one thing this system exists
+to avoid.
+
+A bloom fades to *its own hue at zero alpha*, on a curve. Both halves
+matter. The `transparent` keyword means transparent **black**, so a bloom
+fading to it wears a dirty grey halo exactly where it should be dissolving
+into the field — and a linear alpha ramp has a corner in it that the eye
+finds and reads as a disc with an edge. Real light falls off on a curve.
+
+Optional film grain and vignette. The grain is neutral-grey noise at a
+little over one 8-bit level of amplitude, blended `overlay` — mid-grey is
+overlay's identity, so it dithers luminance locally without lifting the
+exposure. It is worth turning on for any large gradient: banding is a
+luminance artefact, and dithering is the cheapest fix for it. (Coloured
+noise would not work, and would crawl over the slide as chroma dirt.)
 
 Set Motion to **Still** if the talk is being filmed, or if the room needs
 the calm.
@@ -112,11 +146,11 @@ that render the actual finish:
 | | |
 |---|---|
 | **Gradient** | Flat two-colour accent sweep. The quiet one. |
-| **Gloss** | Bright crown, saturated core, reflected lift at the baseline. The hard specular break at the midline is what makes it read as a lit, curved surface. |
+| **Gloss** | Bright crown, saturated core, reflected lift at the baseline. The hard specular break at the midline is what makes it read as a lit, curved surface. The crown is a tinted near-white rather than pure white — at full white the top third of every letter is a blank cutout and the type stops being readable at the back of the room. |
 | **Chrome** | Neutral metal. The tight light/dark inversion at the midline is the horizon reflecting in the bevel. |
 | **Liquid** | An oversized gradient sliding under the glyphs, so colour appears to pour through the letterforms. Animated. |
-| **Shimmer** | A single specular band crossing the fill, with a long pause between passes so it reads as a catch of light rather than a loop. Animated. |
-| **Liquid glass** | Apple's material, painted. `backdrop-filter` can't be clipped to glyphs, so the glass is drawn instead: a refractive crown, a travelling highlight, a dark underside, a hairline stroke standing in for edge thickness, and a contact shadow. Animated. |
+| **Shimmer** | A single soft specular band crossing the fill, at about half strength, with most of the cycle spent waiting. Both are the point: at full white it's a bar wiping the headline out, and at a two-second cycle it's a loading skeleton. You should notice it *has happened*, not watch it go past. Animated. |
+| **Liquid glass** | Apple's material, painted. `backdrop-filter` can't be clipped to glyphs, so the glass is drawn instead: a refractive crown, a travelling highlight, a dark underside, a hairline stroke standing in for edge thickness, and a contact shadow. One shadow, not three — an outer glow stacked on the contact shadow is just haze, and it fights the letterforms for the same edge. Animated. |
 | **Frost** | Etched into glass — translucent, legible over busy backgrounds. |
 | **Emboss** | Pressed into the surface. Prints well. |
 | **Outline** | Weight without mass. Good over photography. |
@@ -124,6 +158,11 @@ that render the actual finish:
 These are **not** the default, deliberately. A glossy headline against plain
 body copy is a focal point; a deck where everything shimmers is a deck where
 nothing does. Use one per slide, on the biggest thing.
+
+They are also all tuned quieter than they could be. Every one of these
+effects is trivially easy to overdo, and a finish loud enough to be noticed
+*as an effect* has stopped doing its job — which is to make one thing on the
+slide look like the thing worth looking at.
 
 Every finish degrades to a solid readable colour if its clip isn't
 supported — the failure mode is never invisible text, and there's a test
@@ -147,7 +186,17 @@ rectangles.
 **Choreography.** Three independent layers, which is what makes combinations
 work — a title can drop in with a spring, float gently forever, and sit on a
 slide that arrived with an iris wipe, without any of the three knowing about
-the others:
+the others.
+
+They are independent because each one owns its own node: `.el` holds the
+geometry, its rotation and its shadow; `.el-anim` runs the entrance;
+`.el-emph` runs the loop. There is only one `transform` and one `filter` per
+element, and a running CSS animation outranks an inline style, so sharing a
+node meant they destroyed each other — an element with both an entrance and
+a loop played its *entrance*, on the loop's timing, for the length of the
+talk; anything rotated snapped upright the moment either started; anything
+with a shadow lost it. Nesting is what makes the catalogue below actually
+combinable rather than just listed together.
 
 - **30 entrances** grouped as Basic, Directional, Reveal, Dimensional and
   Energetic — including spring, elastic, drop, roll, unfold, iris, split,
@@ -159,8 +208,15 @@ the others:
 - **15 slide transitions**: Magic Move, fade, slide, push, zoom, pull back,
   blur, iris, cover, reveal, flip, swipe up, dissolve, glitch, cut.
 
-Elements arrive in stacking order with a 55ms stagger. Everything respects
-`prefers-reduced-motion`, and every loop is frozen in thumbnails and print.
+Elements arrive in stacking order with a 55ms stagger — but only on
+transitions that don't move the slide itself. If the whole slide flies in
+from the right *and* each thing on it separately rises and fades, that's two
+different motions describing the same arrival, which is the most common way a
+deck ends up looking amateur. Either the slide moves or its contents
+assemble, never both.
+
+Everything respects `prefers-reduced-motion`, and every loop is frozen in
+thumbnails and print.
 
 ## Continuity — why it plays as one space
 
@@ -201,10 +257,17 @@ unreliable. `element.animate()` takes an explicit from/to and returns a
 finished promise, so cleanup is exact rather than a timeout racing the
 animation.
 
-**The standalone HTML export does all of this too** — persistent atmosphere
-and Magic Move included, with the geometry baked into `data-*` attributes so
-the exported player needs no deck model. What you rehearse is what plays on
-someone else's laptop.
+**The standalone HTML export does all of this too** — persistent atmosphere,
+Magic Move, the full transition set and the entrance choreography, with the
+geometry baked into `data-*` attributes so the exported player needs no deck
+model. What you rehearse is what plays on someone else's laptop.
+
+That required moving the transition catalogue out of `css/present.css` and
+into `js/slide-css.js`, keyed off bare `enter-*` / `exit-*` classes. An
+export carries that one stylesheet and nothing else, so anything scoped to
+the editor's presentation surface played in rehearsal and then degraded
+silently to a hard cut on the machine you actually presented from — which is
+the worst possible place to find out.
 
 ### Text formatting
 
@@ -232,8 +295,8 @@ progressive disclosure works the way you expect when you're live.
 ```
 index.html
 css/   app.css      editor chrome
-       present.css  presentation + presenter view
-js/    slide-css.js slide surface + print rules (see note below)
+       present.css  presentation chrome + presenter view
+js/    slide-css.js slide surface, motion, transitions, print (see note below)
        palette.js   colour engine — derives a full palette from one accent
        backgrounds.js  ten depth presets, motion modes, grain, vignette
        shapes.js    parametric shape generators + corner rounding
@@ -256,6 +319,13 @@ The slide styling lives in `js/slide-css.js` as a string rather than in a
 `fetch()` is blocked on `file://` pages — so a stylesheet would have meant
 exports came out unstyled whenever you'd opened `index.html` directly. One
 source of truth that every path can read, with no build step.
+
+The rule that follows from that: **if a viewer can see it, it belongs in
+`slide-css.js`.** Everything that draws a slide, moves an element, or
+replaces one slide with another lives there. `css/present.css` and
+`css/app.css` hold only chrome — the HUD, the presenter window, the editor
+— none of which an export contains. Anything visual that drifts into those
+files works in rehearsal and silently disappears on the night.
 
 ## Known limits
 

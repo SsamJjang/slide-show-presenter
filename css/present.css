@@ -42,98 +42,26 @@
 .present-stage .el.magic { z-index: 2; }
 
 /* ---------------- Transitions ----------------
-   Each slide enters with the transition stored on it. Kept short
-   (380ms) — anything longer reads as sluggish from the audience. */
+
+   The transition catalogue itself lives in js/slide-css.js, keyed off plain
+   'enter-*' / 'exit-*' classes rather than off '.present-stage'. It has to:
+   the standalone export embeds that file and nothing else, so anything
+   defined only here plays in rehearsal and then silently degrades to a hard
+   cut on the laptop you actually present from. Only the parts specific to
+   presenting inside the editor window stay in this file.
+
+   The keyframes compose with the scale() the renderer sets, via --s. On a
+   surface that isn't scaled (the exported player scales the slide itself,
+   not its page) --s is simply absent and the fallback of 1 applies. */
 
 .present-stage .slide-host {
   position: absolute; top: 0; left: 0;
   will-change: transform, opacity;
 }
-.present-stage .slide-host.enter-fade  { animation: pFadeIn  .38s ease both; }
-.present-stage .slide-host.exit-fade   { animation: pFadeOut .38s ease both; }
-.present-stage .slide-host.enter-slide { animation: pSlideIn .42s cubic-bezier(.2,.8,.25,1) both; }
-.present-stage .slide-host.exit-slide  { animation: pSlideOut .42s cubic-bezier(.2,.8,.25,1) both; }
-.present-stage .slide-host.enter-push  { animation: pPushIn  .46s cubic-bezier(.3,.85,.25,1) both; }
-.present-stage .slide-host.exit-push   { animation: pPushOut .46s cubic-bezier(.3,.85,.25,1) both; }
-.present-stage .slide-host.enter-zoom  { animation: pZoomIn  .44s cubic-bezier(.2,.9,.3,1) both; }
-.present-stage .slide-host.exit-zoom   { animation: pZoomOut .3s ease both; }
-
-/* Transforms compose with the scale() the renderer sets, so every
-   keyframe re-declares it via the --s custom property. */
-@keyframes pFadeIn   { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pFadeOut  { to   { opacity: 0; } }
-@keyframes pSlideIn  { from { opacity: 0; transform: scale(var(--s,1)) translateX(7%); }
-                       to   { opacity: 1; transform: scale(var(--s,1)) translateX(0); } }
-@keyframes pSlideOut { to   { opacity: 0; transform: scale(var(--s,1)) translateX(-7%); } }
-@keyframes pPushIn   { from { transform: scale(var(--s,1)) translateY(100%); }
-                       to   { transform: scale(var(--s,1)) translateY(0); } }
-@keyframes pPushOut  { to   { transform: scale(var(--s,1)) translateY(-100%); } }
-@keyframes pZoomIn   { from { opacity: 0; transform: scale(calc(var(--s,1) * .88)); }
-                       to   { opacity: 1; transform: scale(var(--s,1)); } }
-@keyframes pZoomOut  { to   { opacity: 0; transform: scale(calc(var(--s,1) * 1.06)); } }
-
-/* --- extended transition set --- */
-.present-stage .slide-host.enter-zoomOut  { animation: pPullIn .5s cubic-bezier(.2,.9,.3,1) both; }
-.present-stage .slide-host.exit-zoomOut   { animation: pPullOut .38s ease both; }
-@keyframes pPullIn   { from { opacity: 0; transform: scale(calc(var(--s,1) * 1.18)); }
-                       to   { opacity: 1; transform: scale(var(--s,1)); } }
-@keyframes pPullOut  { to   { opacity: 0; transform: scale(calc(var(--s,1) * .86)); } }
-
-.present-stage .slide-host.enter-blur { animation: pBlurIn .5s ease both; }
-.present-stage .slide-host.exit-blur  { animation: pBlurOut .4s ease both; }
-@keyframes pBlurIn   { from { opacity: 0; filter: blur(26px); }
-                       to   { opacity: 1; filter: blur(0); } }
-@keyframes pBlurOut  { to   { opacity: 0; filter: blur(26px); } }
-
-.present-stage .slide-host.enter-iris { animation: pIrisIn .62s cubic-bezier(.3,.85,.25,1) both; }
-.present-stage .slide-host.exit-iris  { animation: pFadeOut .3s ease both; }
-@keyframes pIrisIn   { from { clip-path: circle(0% at 50% 50%); }
-                       to   { clip-path: circle(78% at 50% 50%); } }
-
-/* Cover slides the new deck over the old one, which stays put — the old
-   slide must not also move or the two cancel out visually. */
-.present-stage .slide-host.enter-cover { animation: pCoverIn .5s cubic-bezier(.3,.9,.25,1) both; }
-.present-stage .slide-host.exit-cover  { animation: pHold .5s both; }
-@keyframes pCoverIn  { from { transform: scale(var(--s,1)) translateX(100%); }
-                       to   { transform: scale(var(--s,1)) translateX(0); } }
-@keyframes pHold     { to { opacity: 1; } }
-
-/* Reveal is the inverse: the old slide leaves, uncovering the new one. */
-.present-stage .slide-host.enter-reveal { animation: pHold .5s both; z-index: 0; }
-.present-stage .slide-host.exit-reveal  { animation: pRevealOut .5s cubic-bezier(.3,.9,.25,1) both; z-index: 1; }
-@keyframes pRevealOut { to { transform: scale(var(--s,1)) translateX(-100%); } }
-
-.present-stage .slide-host.enter-flip { animation: pFlipIn .58s cubic-bezier(.3,.9,.3,1) both; }
-.present-stage .slide-host.exit-flip  { animation: pFlipOut .34s ease-in both; }
-@keyframes pFlipIn   { from { opacity: 0; transform: scale(var(--s,1)) perspective(1600px) rotateY(52deg); }
-                       to   { opacity: 1; transform: scale(var(--s,1)) perspective(1600px) rotateY(0); } }
-@keyframes pFlipOut  { to   { opacity: 0; transform: scale(var(--s,1)) perspective(1600px) rotateY(-52deg); } }
-
-.present-stage .slide-host.enter-swipeUp { animation: pSwipeUpIn .5s cubic-bezier(.25,.9,.25,1) both; }
-.present-stage .slide-host.exit-swipeUp  { animation: pSwipeUpOut .5s cubic-bezier(.25,.9,.25,1) both; }
-@keyframes pSwipeUpIn  { from { transform: scale(var(--s,1)) translateY(100%); } }
-@keyframes pSwipeUpOut { to   { transform: scale(var(--s,1)) translateY(-42%); opacity: 0; } }
-
-.present-stage .slide-host.enter-dissolve { animation: pDissolveIn .72s ease both; }
-.present-stage .slide-host.exit-dissolve  { animation: pFadeOut .5s ease both; }
-@keyframes pDissolveIn { from { opacity: 0; filter: blur(8px) contrast(1.4); }
-                         to   { opacity: 1; filter: blur(0) contrast(1); } }
-
-/* Glitch: three hard jumps with colour separation. Short on purpose —
-   it's a punctuation mark, and it stops being one if it lingers. */
-.present-stage .slide-host.enter-glitch { animation: pGlitchIn .42s steps(1,end) both; }
-.present-stage .slide-host.exit-glitch  { animation: pFadeOut .16s both; }
-@keyframes pGlitchIn {
-  0%   { opacity: 0; transform: scale(var(--s,1)) translateX(-2%); filter: hue-rotate(70deg) saturate(3); }
-  25%  { opacity: 1; transform: scale(var(--s,1)) translateX(1.6%); filter: hue-rotate(-50deg) saturate(2.4); }
-  50%  { transform: scale(var(--s,1)) translateX(-.9%); filter: none; }
-  75%  { transform: scale(var(--s,1)) translateX(.5%); filter: saturate(1.6); }
-  100% { transform: scale(var(--s,1)) translateX(0); filter: none; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .present-stage .slide-host { animation-duration: .01ms !important; }
-  .el { transition-duration: .01ms !important; }
+  .el-anim { transition-duration: .01ms !important; }
 }
 
 /* ---------------- HUD ---------------- */
@@ -141,7 +69,13 @@
 .present-hud {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
   padding: 14px 22px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
+  /* Eased in steps. A two-stop scrim across the full width of a projector
+     bands into horizontal stripes, and this one sits under every slide of
+     the talk. */
+  background: linear-gradient(to top,
+    rgba(0,0,0,.70) 0%, rgba(0,0,0,.56) 18%, rgba(0,0,0,.40) 36%,
+    rgba(0,0,0,.24) 54%, rgba(0,0,0,.11) 72%, rgba(0,0,0,.03) 88%,
+    rgba(0,0,0,0) 100%);
   color: rgba(255,255,255,.72);
   font: 500 12.5px/1 'Inter', system-ui, sans-serif;
   opacity: 0; transition: opacity .25s; pointer-events: none;

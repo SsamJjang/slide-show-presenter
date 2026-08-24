@@ -104,7 +104,10 @@ const Continuity = (() => {
                     Math.abs(sx - 1) < .003 && Math.abs(sy - 1) < .003;
 
       b.classList.add('magic');
-      b.style.animation = 'none';        // suppress the entrance for travellers
+      // Suppress the entrance for travellers. The entrance lives on the inner
+      // motion layer now, so silencing .el itself would not have stopped it.
+      const bAnim = b.querySelector('.el-anim');
+      if (bAnim) bAnim.style.animation = 'none';
 
       if (!still) {
         b.style.transformOrigin = 'top left';
@@ -137,10 +140,16 @@ const Continuity = (() => {
     // property. Stop it first so the exit is the only thing driving opacity.
     prevHost.classList.remove('entering');
 
+    /* Both fades drive the inner motion layer, never .el. Animating .el's
+       transform here would have overwritten the element's own rotation for
+       the length of the transition, so anything set at an angle snapped
+       upright to leave and back again to arrive. */
     prevHost.querySelectorAll('.el').forEach(el => {
       if (el.style.visibility === 'hidden') return;
-      el.style.animation = 'none';
-      running.push(el.animate(
+      const inner = el.querySelector('.el-anim');
+      if (!inner) return;
+      inner.style.animation = 'none';
+      running.push(inner.animate(
         [{ opacity: 1, transform: 'translateY(0)' },
          { opacity: 0, transform: 'translateY(-12px)' }],
         { duration: OUT, easing: 'ease-in', fill: 'both' }));
@@ -148,8 +157,10 @@ const Continuity = (() => {
 
     nextHost.querySelectorAll('.el').forEach(el => {
       if (moved.has(el.dataset.id)) return;
-      el.style.animation = 'none';
-      running.push(el.animate(
+      const inner = el.querySelector('.el-anim');
+      if (!inner) return;
+      inner.style.animation = 'none';
+      running.push(inner.animate(
         [{ opacity: 0, transform: 'translateY(16px)' },
          { opacity: 1, transform: 'translateY(0)' }],
         { duration: duration * .52, delay: IN_DELAY, easing: EASE, fill: 'both' }));
@@ -165,16 +176,25 @@ const Continuity = (() => {
      later build reveals and emphasis loops behave normally. */
   function settleHost(host) {
     host.querySelectorAll('.el').forEach(el => {
-      // Commit any WAAPI animation still holding a fill, then drop it, so the
-      // element returns to being styled purely by its own rules. Leaving a
-      // filled animation in place would pin the element and block later
-      // emphasis loops and build reveals.
-      el.getAnimations?.().forEach(a => a.cancel());
-      el.style.transition = '';
-      el.style.transform = '';
-      el.style.opacity = '';
-      el.style.animation = '';
-      el.style.transformOrigin = '';
+      // Cancel any WAAPI animation still holding a fill, then drop the inline
+      // styles, so the element goes back to being styled purely by its own
+      // rules. A filled animation left in place would pin it and block later
+      // emphasis loops and build reveals. Both motion layers get the same
+      // treatment — the travel runs on .el, the fades run on .el-anim.
+      [el, el.querySelector('.el-anim')].forEach(n => {
+        if (!n) return;
+        n.getAnimations?.().forEach(a => a.cancel());
+        n.style.transition = '';
+        n.style.transform = '';
+        n.style.opacity = '';
+        n.style.animation = '';
+        n.style.transformOrigin = '';
+      });
+      /* .el's transform is not purely animation state — it also carries the
+         element's own rotation, which clearing the inline style just threw
+         away. Put it back from the geometry that travels with the markup. */
+      const rot = +(el.dataset.rot || 0);
+      if (rot) el.style.transform = `rotate(${rot}deg)`;
       el.classList.remove('magic');
     });
   }

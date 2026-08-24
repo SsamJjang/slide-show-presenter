@@ -63,34 +63,37 @@ const Backgrounds = (() => {
     grid: {
       name: 'Grid', hint: 'Technical blueprint',
       blobs: [blob(50, 0, 100, 80, 'glow', 29)],
-      overlay: `
+      pattern: `
         background-image:
           linear-gradient(var(--line) 1px, transparent 1px),
           linear-gradient(90deg, var(--line) 1px, transparent 1px);
         background-size: 80px 80px, 80px 80px;
-        -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%);
-        mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%);
-        opacity: .5;`,
+        --pan-x: 80px; --pan-y: 80px;`,
+      mask: `radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%)`,
+      opacity: .5,
       overlayMotion: 'pan',
     },
 
     dots: {
       name: 'Dots', hint: 'Quiet texture',
       blobs: [blob(78, 10, 90, 70, 'glow', 33)],
-      overlay: `
-        background-image: radial-gradient(var(--line) 1.6px, transparent 1.6px);
+      pattern: `
+        background-image: radial-gradient(var(--line) 1.6px, transparent 1.7px);
         background-size: 46px 46px;
-        -webkit-mask-image: radial-gradient(110% 100% at 60% 20%, #000 10%, transparent 80%);
-        mask-image: radial-gradient(110% 100% at 60% 20%, #000 10%, transparent 80%);
-        opacity: .7;`,
+        --pan-x: 46px; --pan-y: 46px;`,
+      mask: `radial-gradient(110% 100% at 60% 20%, #000 10%, transparent 80%)`,
+      opacity: .7,
       overlayMotion: 'pan',
     },
 
     rays: {
       name: 'Rays', hint: 'Rotating light shafts',
       blobs: [blob(50, 0, 90, 70, 'glow', 25)],
-      overlay: `
-        background-image: conic-gradient(from 210deg at 50% -10%,
+      // Centred on the layer's own pivot (50% 0), which .bg-pattern[spin]
+      // parks over the slide's top-centre — so the shafts radiate from the
+      // point the layer rotates about and the geometry can't drift.
+      pattern: `
+        background-image: conic-gradient(from 210deg at 50% 0%,
           transparent 0deg, var(--glow) 26deg, transparent 52deg,
           transparent 66deg, var(--glow2) 88deg, transparent 116deg);`,
       overlayMotion: 'spin',
@@ -123,11 +126,67 @@ const Backgrounds = (() => {
     orbit: { name: 'Orbit',   hint: 'Circling, most alive' },
   };
 
+  /* Grain exists to break up gradient banding, and banding is a LUMINANCE
+     artefact — so the noise has to be luminance too. feTurbulence generates
+     each channel independently, which is coloured static: on a projector
+     that reads as chroma dirt crawling over the slide rather than as film
+     grain. The colour matrix flattens it to grey, and the alpha row keeps
+     the tile from carrying its own opacity on top of the layer's. */
   const GRAIN_SVG =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>` +
-    `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter>` +
-    `<rect width='120' height='120' filter='url(%23n)' opacity='.55'/></svg>`;
-  const GRAIN_URL = `url("data:image/svg+xml,${GRAIN_SVG.replace(/#/g, '%23').replace(/"/g, "'")}")`;
+    `<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>` +
+    `<filter id='n' color-interpolation-filters='sRGB'>` +
+    `<feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/>` +
+    /* Collapse the three noise channels into one grey value and pin alpha
+       at 1, in a single explicit matrix.
+
+       Both halves matter. feTurbulence generates R, G and B independently,
+       which is coloured static: on a projector that reads as chroma dirt
+       crawling over the slide, not as film grain — and banding, the thing
+       this layer exists to break up, is a luminance artefact, so the fix
+       has to be luminance too. And turbulence varies alpha as well, which
+       punches transparent holes through the tile; those read as dirt on
+       the lens rather than as grain in the image. */
+    `<feColorMatrix type='matrix' values='` +
+    `.34 .33 .33 0 0  .34 .33 .33 0 0  .34 .33 .33 0 0  0 0 0 0 1'/>` +
+    `</filter>` +
+    `<rect width='140' height='140' filter='url(#n)'/></svg>`;
+  /* Fully percent-encoded and UNQUOTED.
+
+     This used to be `url("data:...")` written straight into a style
+     attribute — which is a style attribute already delimited by double
+     quotes, so the HTML parser ended it at the first quote inside the URL
+     and the grain silently never rendered at all. Anywhere. Swapping the
+     SVG's own quotes for apostrophes only moved the problem, since an
+     unquoted url() token can't contain those either.
+
+     encodeURIComponent leaves ' ( ) ! * alone, and the first three are
+     exactly what url() and the SVG both use, so they're escaped by hand. */
+  const GRAIN_URL = 'url(data:image/svg+xml,' +
+    encodeURIComponent(GRAIN_SVG)
+      .replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29') + ')';
+
+  /* A bloom's falloff.
+
+     `radial-gradient(closest-side, X 0%, transparent 100%)` has two faults
+     that are most of why a gradient background looks cheap:
+
+       1. `transparent` is transparent BLACK. Fading a coloured bloom to it
+          drags every midtone toward grey, so each bloom wears a dirty halo
+          exactly where it should be dissolving into the field. Fading to
+          the same hue at zero alpha is the fix, and it's not optional.
+
+       2. A linear alpha ramp has a corner in it at both ends. The eye finds
+          that corner and reads a disc with an edge. Real light falls off on
+          a curve, so these stops trace a rough Gaussian instead — dense in
+          the core, long and thin in the tail.
+
+     color-mix does the alpha arithmetic against the zero-alpha twin, which
+     keeps the whole thing driven by theme variables: change the accent and
+     every bloom re-tints without re-rendering a thing. */
+  const FALLOFF = [[0, 100], [16, 93], [32, 76], [48, 53], [64, 31], [80, 14], [91, 5], [100, 0]];
+
+  const bloom = (tint) => 'radial-gradient(closest-side, ' + FALLOFF.map(([pos, amt]) =>
+    `color-mix(in srgb, var(--${tint}) ${amt}%, var(--${tint}-0)) ${pos}%`).join(', ') + ')';
 
   function html(slide) {
     const preset = PRESETS[slide.bgPreset] || PRESETS.none;
@@ -146,16 +205,31 @@ const Backgrounds = (() => {
         // animation in place, without rebuilding (which would restart it).
         return `<i class="bg-blob" data-dur="${b.dur}" data-delay="${b.delay || -i * 7}"
           style="--x:${b.x}%;--y:${b.y}%;--w:${b.w}%;--h:${b.h}%;
-          background:radial-gradient(closest-side, var(--${b.tint}) 0%, transparent 100%);
+          background:${bloom(b.tint)};
           animation-duration:${dur}s;animation-delay:${delay}s"></i>`;
       }).join('');
       out.push(`<div class="slide-bg" data-motion="${motion}">${blobs}</div>`);
     }
 
-    if (preset.overlay) {
+    /* The pattern sits on an inner layer so its motion can be a TRANSFORM.
+       Panning `background-position` on a full-bleed tiled gradient repaints
+       the whole slide every frame — the one thing this system is built to
+       avoid — and it silently breaks on presets whose pattern has a
+       different number of layers than the keyframe declares. The mask and
+       opacity stay on the outer element, which never moves, so the fade-out
+       at the edges holds still while the pattern travels under it. */
+    if (preset.pattern) {
       const om = motion === 'none' ? 'none' : (preset.overlayMotion || 'none');
-      out.push(`<div class="slide-bg-overlay" data-omotion="${om}"
-        style="${preset.overlay.replace(/\s+/g, ' ')};animation-duration:${(70 / speed).toFixed(1)}s"></div>`);
+      const mask = preset.mask
+        ? `-webkit-mask-image:${preset.mask};mask-image:${preset.mask};` : '';
+      const op = preset.opacity != null ? `opacity:${preset.opacity};` : '';
+      // Rays sweep a full circle, so they need many times longer than a pan
+      // that only has to travel one tile before it repeats.
+      const dur = (preset.overlayMotion === 'spin' ? 120 : 26) / speed;
+      out.push(`<div class="slide-bg-overlay" style="${mask}${op}">` +
+        `<i class="bg-pattern" data-omotion="${om}" data-dur="${
+          preset.overlayMotion === 'spin' ? 120 : 26}"
+          style="${preset.pattern.replace(/\s+/g, ' ')};animation-duration:${dur.toFixed(1)}s"></i></div>`);
     }
 
     if (slide.bgGrain) out.push(`<div class="slide-grain" style="background-image:${GRAIN_URL}"></div>`);

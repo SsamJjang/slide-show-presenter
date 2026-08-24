@@ -103,6 +103,99 @@ const Palette = (() => {
     return rgb ? `rgba(${Math.round(rgb.r)},${Math.round(rgb.g)},${Math.round(rgb.b)},${a})` : `rgba(0,0,0,${a})`;
   };
 
+  /* ---------- gradient construction ----------
+
+     A two-stop CSS gradient is interpolated linearly in sRGB, and sRGB is
+     not perceptually uniform. Two things go wrong because of it: the middle
+     of a two-hue ramp sags dark and grey, and a long ramp over a near-black
+     field bands into visible stripes on a projector. Both have the same fix
+     — compute the intermediate colours in a uniform space and emit them as
+     explicit stops.
+
+     Done in JS rather than with CSS's `in oklab` keyword so the output is
+     plain hex: an exported deck then can't lose its gradients on a browser
+     that doesn't support the newer gradient syntax, and the stops are also
+     what kills the banding, which the keyword alone would not. */
+
+  /* --- Oklab. Perceptually uniform, cheap, and the only space where a
+     midpoint between two colours looks like the midpoint. --- */
+
+  const lin = (c) => { c /= 255; return c <= .04045 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+  const unlin = (c) => 255 * (c <= .0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - .055);
+
+  function hexToOklab(hex) {
+    const rgb = hexToRgb(hex) || { r: 0, g: 0, b: 0 };
+    const r = lin(rgb.r), g = lin(rgb.g), b = lin(rgb.b);
+    const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b);
+    const m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b);
+    const s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+    return {
+      L: .2104542553 * l + .7936177850 * m - .0040720468 * s,
+      a: 1.9779984951 * l - 2.4285922050 * m + .4505937099 * s,
+      b: .0259040371 * l + .7827717662 * m - .8086757660 * s,
+    };
+  }
+
+  function oklabToHex({ L, a, b }) {
+    const l = (L + .3963377774 * a + .2158037573 * b) ** 3;
+    const m = (L - .1055613458 * a - .0638541728 * b) ** 3;
+    const s = (L - .0894841775 * a - 1.2914855480 * b) ** 3;
+    return rgbToHex({
+      r: unlin(+4.0767416621 * l - 3.3077115913 * m + .2309699292 * s),
+      g: unlin(-1.2684380046 * l + 2.6097574011 * m - .3413193965 * s),
+      b: unlin(-.0041960863 * l - .7034186147 * m + 1.7076147010 * s),
+    });
+  }
+
+  /* Blend two colours perceptually.
+
+     Polar (Oklch) interpolation along the short hue arc keeps the middle of
+     the ramp as saturated as the ends — which is what you want for a brand
+     gradient, and what plain sRGB fails at. But past a certain arc it starts
+     touring the colour wheel: orange to teal via polar blending runs through
+     magenta and purple, which is a rainbow, not a gradient. So beyond 110deg
+     of hue we blend rectangularly instead and pass through a neutral. That
+     boundary is the difference between "two colours meeting" and "a Winamp
+     skin", and it's why complementary harmonies stay usable here. */
+  const ARC_LIMIT = 110;
+
+  function mix(aHex, bHex, t) {
+    const A = hexToOklab(aHex), B = hexToOklab(bHex);
+    const cA = Math.hypot(A.a, A.b), cB = Math.hypot(B.a, B.b);
+    let dh = (Math.atan2(B.b, B.a) - Math.atan2(A.b, A.a)) * 180 / Math.PI;
+    if (dh > 180) dh -= 360;
+    if (dh < -180) dh += 360;
+
+    // A near-neutral end has no meaningful hue to travel from, so polar
+    // blending would swing it through an arbitrary arc. Rectangular is right.
+    const polar = Math.abs(dh) <= ARC_LIMIT && cA > .02 && cB > .02;
+    if (!polar) {
+      return oklabToHex({
+        L: A.L + (B.L - A.L) * t,
+        a: A.a + (B.a - A.a) * t,
+        b: A.b + (B.b - A.b) * t,
+      });
+    }
+    const h = Math.atan2(A.b, A.a) + (dh * Math.PI / 180) * t;
+    const c = cA + (cB - cA) * t;
+    return oklabToHex({ L: A.L + (B.L - A.L) * t, a: Math.cos(h) * c, b: Math.sin(h) * c });
+  }
+
+  /* `steps` intermediate stops between two colours. Six is where 8-bit
+     banding stops being visible across a 1920px sweep and more stops stop
+     paying for themselves. */
+  function stops(aHex, bHex, steps = 6) {
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      out.push(`${mix(aHex, bHex, t)} ${(t * 100).toFixed(1)}%`);
+    }
+    return out;
+  }
+
+  const linear = (angle, a, b, steps = 6) =>
+    `linear-gradient(${angle}, ${stops(a, b, steps).join(', ')})`;
+
   /* ---------- the derivation ---------- */
 
   const HARMONIES = {
@@ -152,21 +245,31 @@ const Palette = (() => {
     const muted = toHex({ h: base.h, s: dark ? .11 : .13, l: dark ? .63 : .40 });
 
     return {
-      accent, accent2, accent3, bg, bgLift, ink, muted,
+      accent, accent2, accent3, bg, bgLift, ink, muted, dark,
       surface: withAlpha(dark ? '#ffffff' : '#000000', dark ? .055 : .045),
       line: withAlpha(dark ? '#ffffff' : '#000000', dark ? .14 : .13),
       glow: withAlpha(accent, dark ? .40 : .28),
       glow2: withAlpha(accent2, dark ? .32 : .22),
+      /* The SAME hue at zero alpha. A gradient that fades to the `transparent`
+         keyword is fading to transparent BLACK, so every bloom on a dark deck
+         was ringed with a dirty grey halo where the two met. Fading to the
+         hue's own zero-alpha form is the only way to get a clean falloff. */
+      glow0: withAlpha(accent, 0),
+      glow20: withAlpha(accent2, 0),
       accentSoft: withAlpha(accent, .16),
       // Gradient used for luminous display type and accent bars.
-      gradient: `linear-gradient(115deg, ${accent} 0%, ${accent2} 100%)`,
+      gradient: linear('115deg', accent, accent2),
     };
   }
 
   /* Turn a derived palette into the CSS variables the slide surface reads. */
   function toVars(p, { dark = true } = {}) {
     return {
-      '--bg': `radial-gradient(120% 130% at 12% -10%, ${p.bgLift} 0%, ${p.bg} 62%)`,
+      /* Multi-stop, because a two-stop radial across 1920px of near-black is
+         the single most reliable way to get visible banding on a projector. */
+      '--bg': `radial-gradient(125% 135% at 12% -10%, ${
+        stops(p.bgLift, p.bg, 6).map((c, i, a) =>
+          c.replace(/ [\d.]+%$/, ` ${(i / (a.length - 1) * 68).toFixed(1)}%`)).join(', ')})`,
       '--bg-flat': p.bg,
       '--ink': p.ink,
       '--muted': p.muted,
@@ -179,6 +282,12 @@ const Palette = (() => {
       '--glow2': p.glow2,
       '--accent-soft': p.accentSoft,
       '--accent-gradient': p.gradient,
+      '--glow-0': p.glow0,
+      '--glow2-0': p.glow20,
+      // Specular highlight colour. On a light deck a pure-white sheen is
+      // invisible, so the "lit" edge has to darken instead of brighten.
+      '--spec': dark ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,.92)',
+      '--shade': dark ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.22)',
       '--scheme': dark ? 'dark' : 'light',
     };
   }
@@ -195,5 +304,6 @@ const Palette = (() => {
     };
   }
 
-  return { derive, toVars, audit, contrast, luminance, withAlpha, toHsl, toHex, HARMONIES, hexToRgb, rgbToHex };
+  return { derive, toVars, audit, contrast, luminance, withAlpha, toHsl, toHex,
+           mix, stops, linear, HARMONIES, hexToRgb, rgbToHex };
 })();

@@ -47,8 +47,9 @@ const Exporter = (() => {
 
   /* ---------- standalone HTML ---------- */
 
-  function exportHTML() {
-    const deck = Store.deck;
+  /* Split from exportHTML so the document can be produced without also
+     downloading it — which is what makes the exported player testable. */
+  function buildHTML(deck = Store.deck) {
     // Same variable map the editor applies, including any derived accent
     // palette — otherwise the export silently loses the deck's colour system.
     const themeVars = Object.entries(computeThemeVars(deck.theme, deck))
@@ -83,18 +84,29 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;
 #deck{${themeVars};position:absolute;inset:0}
 #atmos{position:absolute;inset:0;overflow:hidden;background:var(--bg);z-index:0}
 #atmos .atmos-layer{position:absolute;inset:0}
+/* A page stays laid out while it plays its exit, or the transition would be
+   a display:none the instant it started. */
 .pg{position:absolute;inset:0;display:none;place-items:center;z-index:1}
-.pg.on{display:grid}
+.pg.on,.pg.leaving{display:grid}
 /* Slides are transparent over the persistent field, same as presentation mode. */
 .pg .slide{background:transparent!important}
 .pg .slide>.slide-bg,.pg .slide>.slide-bg-overlay,
 .pg .slide>.slide-grain,.pg .slide>.slide-vignette{display:none}
 .slide-host{transform-origin:center center}
-.el.magic{z-index:2}
+/* Eased alpha: a straight two-stop fade to transparent bands into visible
+   steps across the bottom of a projector, and it's the last thing on screen
+   under the slide. */
 #hud{position:fixed;left:0;right:0;bottom:0;padding:12px 20px;color:rgba(255,255,255,.6);
-  font-size:12px;display:flex;gap:14px;opacity:0;transition:opacity .25s;
-  background:linear-gradient(to top,rgba(0,0,0,.7),transparent)}
-body:hover #hud{opacity:1}
+  font-size:12px;display:flex;gap:14px;opacity:0;transition:opacity .3s;pointer-events:none;
+  background:linear-gradient(to top,rgba(0,0,0,.66) 0%,rgba(0,0,0,.46) 26%,
+    rgba(0,0,0,.24) 52%,rgba(0,0,0,.08) 78%,rgba(0,0,0,0) 100%)}
+/* Shown on movement and then withdrawn, rather than on :hover — with a mouse
+   resting anywhere over the page, :hover meant "permanently visible", which
+   on a projector is a translucent black band under every slide of the talk. */
+body.ui #hud{opacity:1}
+body{cursor:none}
+body.ui{cursor:default}
+@media (prefers-reduced-motion:reduce){.pg{animation-duration:.01ms!important}}
 </style></head>
 <body><div id="deck"><div id="atmos"></div>${slidesHTML}</div>
 <div id="hud"><span id="n"></span><span style="margin-left:auto">← → to navigate · F for fullscreen</span></div>
@@ -148,31 +160,65 @@ function magic(fromPg,toPg){
     const dx=+a.dataset.x-+b.dataset.x, dy=+a.dataset.y-+b.dataset.y;
     const sx=+b.dataset.w?+a.dataset.w/+b.dataset.w:1;
     const sy=+b.dataset.h?+a.dataset.h/+b.dataset.h:1;
-    if(Math.abs(dx)<.5&&Math.abs(dy)<.5&&Math.abs(sx-1)<.003&&Math.abs(sy-1)<.003)return;
-    b.classList.add('magic');b.style.transformOrigin='top left';
-    b.animate([{transform:'translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')'},
-               {transform:'translate(0,0) scale(1,1)'}],
-              {duration:dur,easing:ease,fill:'both'});
+    /* A rotated element has to keep its angle for the whole trip. Without
+       this the keyframes' transform replaces the inline rotate() and the
+       thing snaps upright, flies, and snaps back. */
+    const rot=+b.dataset.rot?' rotate('+b.dataset.rot+'deg)':'';
+    /* The outgoing copy is hidden whether or not the pair actually moves.
+       A matched element that sits in the same place on both slides has
+       nothing to animate, but its old copy still has to go — otherwise it
+       plays the outgoing fade UNDERNEATH its own stationary twin, which
+       reads as the element dimming for no reason at every cut. */
     a.style.visibility='hidden';
+    b.classList.add('magic');
+    const bi=b.querySelector('.el-anim');if(bi)bi.style.animation='none';
+    if(Math.abs(dx)<.5&&Math.abs(dy)<.5&&Math.abs(sx-1)<.003&&Math.abs(sy-1)<.003)return;
+    b.style.transformOrigin='top left';
+    b.animate([{transform:'translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')'+rot},
+               {transform:'translate(0,0) scale(1,1)'+rot}],
+              {duration:dur,easing:ease,fill:'both'});
   });
   /* Strictly sequenced: old fully gone before new arrives, so two slides that
      both hold text never show both at once. Matched elements still travel
      across the whole duration, so movement keeps leading. */
+  /* Both fades run on the inner motion layer, never on .el — .el's transform
+     is the element's own rotation and must survive the transition. */
   fromPg.querySelectorAll('.el').forEach(e=>{
     if(e.style.visibility==='hidden')return;
-    e.style.animation='none';
-    e.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-12px)'}],
+    const n=e.querySelector('.el-anim');if(!n)return;
+    n.style.animation='none';
+    n.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-12px)'}],
       {duration:dur*.40,easing:'ease-in',fill:'both'});});
   toPg.querySelectorAll('.el').forEach(e=>{
     if(moved.has(e))return;
-    e.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],
+    const n=e.querySelector('.el-anim');if(!n)return;
+    n.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],
       {duration:dur*.52,delay:dur*.44,easing:ease,fill:'both'});});
   setTimeout(()=>{
-    fromPg.querySelectorAll('.el').forEach(e=>{e.getAnimations().forEach(x=>x.cancel());e.style.visibility='';});
-    toPg.querySelectorAll('.el').forEach(e=>{e.getAnimations().forEach(x=>x.cancel());
-      e.classList.remove('magic');e.style.transformOrigin='';});
+    [...fromPg.querySelectorAll('.el'),...toPg.querySelectorAll('.el')].forEach(e=>{
+      [e,e.querySelector('.el-anim')].forEach(n=>{if(n){n.getAnimations().forEach(x=>x.cancel());
+        n.style.transform='';n.style.opacity='';n.style.animation='';n.style.transformOrigin='';}});
+      e.style.visibility='';e.classList.remove('magic');
+      if(+e.dataset.rot)e.style.transform='rotate('+e.dataset.rot+'deg)';
+    });
   },dur+120);
   return dur;
+}
+
+/* Transitions that move the whole page as one object. On those the
+   per-element entrance stagger is suppressed, because the page arriving AND
+   its contents each assembling separately are two different motions
+   describing the same event. Same rule the editor plays by. */
+const HOST_MOVES=['slide','push','zoom','zoomOut','cover','reveal','flip','swipeUp','glitch'];
+const TRANS=['fade','slide','push','zoom','zoomOut','blur','iris','cover','reveal','flip',
+             'swipeUp','dissolve','glitch'];
+let clearing=null;
+
+/* Drop every transition class a page might still be wearing. A presenter
+   clicking faster than the animation must not accumulate them. */
+function strip(p){
+  p.className='pg'+(p.classList.contains('on')?' on':'');
+  p.style.zIndex='';
 }
 
 function show(n,opts){
@@ -183,12 +229,33 @@ function show(n,opts){
   const changed=target!==i;
   i=target;
   syncAtmos(to,first);
-  if(changed&&!first&&to.dataset.trans==='magic'){
-    to.classList.add('on');
+  clearTimeout(clearing);
+  pages.forEach(p=>{p.classList.remove('entering','leaving');
+    TRANS.forEach(t=>p.classList.remove('enter-'+t,'exit-'+t));});
+
+  const t=to.dataset.trans||'fade';
+  if(changed&&!first&&t==='magic'){
+    pages.forEach((p,k)=>p.classList.toggle('on',k===i||p===from));
     magic(from,to);
-    setTimeout(()=>from.classList.remove('on'),900);
+    clearing=setTimeout(()=>{if(from!==to)from.classList.remove('on');},900);
+  }else if(changed&&!first&&TRANS.indexOf(t)>=0){
+    /* The outgoing page keeps its box while it leaves, so the two overlap
+       for the length of the transition exactly as they do in rehearsal. */
+    from.classList.remove('on');from.classList.add('leaving','exit-'+t);
+    pages.forEach((p,k)=>{if(p!==from)p.classList.toggle('on',k===i);});
+    to.classList.add('enter-'+t);
+    /* Stacking is set here rather than in CSS because it depends on the
+       direction of travel, not on the page: Reveal is the one transition
+       where the OUTGOING slide is on top, sliding away to uncover the new
+       one. Everywhere else the arriving slide covers the old. */
+    from.style.zIndex=(t==='reveal')?3:1;
+    to.style.zIndex=(t==='reveal')?1:2;
+    if(HOST_MOVES.indexOf(t)<0)to.classList.add('entering');
+    clearing=setTimeout(()=>{strip(from);strip(to);},1300);
   }else{
     pages.forEach((p,k)=>p.classList.toggle('on',k===i));
+    if(changed&&!first)to.classList.add('entering');
+    if(changed&&!first)clearing=setTimeout(()=>strip(to),1300);
   }
   document.getElementById('n').textContent=(i+1)+' / '+pages.length;
 }
@@ -200,11 +267,26 @@ addEventListener('keydown',e=>{
   if(e.key==='f'||e.key==='F')document.documentElement.requestFullscreen?.();
 });
 addEventListener('click',()=>show(i+1,{animate:1}));
+addEventListener('contextmenu',e=>{e.preventDefault();show(i-1,{animate:1});});
 addEventListener('resize',fit);
+
+/* The bar and the cursor appear on movement and withdraw again. A talk should
+   not have a black band and an arrow parked on it for its whole length. */
+let uiTimer=null;
+addEventListener('mousemove',()=>{
+  document.body.classList.add('ui');
+  clearTimeout(uiTimer);
+  uiTimer=setTimeout(()=>document.body.classList.remove('ui'),2600);
+});
+
 fit();show(0);
 <\/script></body></html>`;
 
-    download(safeName(deck.title) + '.html', html, 'text/html');
+    return html;
+  }
+
+  function exportHTML() {
+    download(safeName(Store.deck.title) + '.html', buildHTML(), 'text/html');
     App.toast('Standalone HTML exported — opens in any browser, offline');
   }
 
@@ -237,5 +319,5 @@ fit();show(0);
     App.toast('In the print dialog: choose "Save as PDF", landscape, margins none');
   }
 
-  return { exportJSON, importJSON, exportHTML, exportPDF, download };
+  return { exportJSON, importJSON, exportHTML, buildHTML, exportPDF, download };
 })();

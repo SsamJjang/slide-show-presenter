@@ -20,7 +20,8 @@ const THEMES = {
     swatch: ['#0a0a0c', '#5b8cff', '#e8e9ed'],
     vars: {
       '--bg-flat': '#0a0a0c',
-      '--bg': 'radial-gradient(120% 120% at 15% 0%, #16171d 0%, #0a0a0c 60%)',
+      '--bg-a': '#16171d', '--bg-b': '#0a0a0c',
+      '--bg-shape': 'radial-gradient(125% 125% at 15% 0%)',
       '--ink': '#f2f3f7', '--muted': '#9aa0ae',
       '--accent': '#5b8cff', '--accent2': '#b78bff',
       '--surface': 'rgba(255,255,255,.05)', '--line': 'rgba(255,255,255,.12)',
@@ -49,7 +50,8 @@ const THEMES = {
     swatch: ['#0b1020', '#4cc9f0', '#f72585'],
     vars: {
       '--bg-flat': '#0b1020',
-      '--bg': 'linear-gradient(135deg,#0b1020 0%,#171b3a 45%,#2a1240 100%)',
+      '--bg-a': '#0b1020', '--bg-b': '#2a1240', '--bg-mid': '#171b3a',
+      '--bg-shape': 'linear-gradient(135deg)',
       '--ink': '#f4f6ff', '--muted': '#98a2c8',
       '--accent': '#4cc9f0', '--accent2': '#f72585',
       '--surface': 'rgba(255,255,255,.06)', '--line': 'rgba(255,255,255,.16)',
@@ -92,7 +94,8 @@ const THEMES = {
     swatch: ['#f6f1e8', '#2b2620', '#a8763e'],
     vars: {
       '--bg-flat': '#f6f1e8',
-      '--bg': 'linear-gradient(160deg,#f9f5ee 0%,#f1e9dc 100%)',
+      '--bg-a': '#f9f5ee', '--bg-b': '#f1e9dc',
+      '--bg-shape': 'linear-gradient(160deg)',
       '--ink': '#241f19', '--muted': '#6f6558',
       '--accent': '#a8763e', '--accent2': '#3f5c50',
       '--surface': 'rgba(36,31,25,.05)', '--line': 'rgba(36,31,25,.15)',
@@ -114,13 +117,39 @@ function computeThemeVars(key, deck = null) {
   const dark = t.dark !== false;
   const vars = { ...t.vars };
 
+  /* A theme that declares its background as two endpoints gets the same
+     multi-stop, perceptually-even ramp the derived palettes use. A two-stop
+     gradient across 1920px of near-black bands into stripes on a projector,
+     and hand-writing seven stops per theme would be unmaintainable. */
+  if (vars['--bg-shape']) {
+    const a = vars['--bg-a'], b = vars['--bg-b'], mid = vars['--bg-mid'];
+    const ramp = mid
+      ? Palette.stops(a, mid, 4).map((c, i) => c.replace(/[\d.]+%$/, (i / 4 * 45).toFixed(1) + '%'))
+          .concat(Palette.stops(mid, b, 4).slice(1)
+            .map((c, i) => c.replace(/[\d.]+%$/, (45 + (i + 1) / 4 * 55).toFixed(1) + '%')))
+      : Palette.stops(a, b, 6);
+    vars['--bg'] = vars['--bg-shape'].replace(/\)$/, ', ' + ramp.join(', ') + ')');
+    delete vars['--bg-shape']; delete vars['--bg-a'];
+    delete vars['--bg-b']; delete vars['--bg-mid'];
+  }
+
   // Derived extras, so themes predating the colour engine still resolve.
   vars['--bg-flat'] ??= t.vars['--bg'];
   vars['--accent3'] ??= t.vars['--accent2'];
-  vars['--accent-gradient'] ??= `linear-gradient(115deg, ${t.vars['--accent']}, ${t.vars['--accent2']})`;
+  vars['--accent-gradient'] ??= Palette.linear('115deg', t.vars['--accent'], t.vars['--accent2']);
   vars['--glow'] ??= Palette.withAlpha(t.vars['--accent'], dark ? .38 : .26);
   vars['--glow2'] ??= Palette.withAlpha(t.vars['--accent2'], dark ? .30 : .20);
+  /* Zero-alpha versions of the same hues. Fading a bloom to the `transparent`
+     keyword means fading to transparent BLACK, which rings every bloom with a
+     dirty grey halo where it meets the background. */
+  vars['--glow-0'] ??= Palette.withAlpha(t.vars['--accent'], 0);
+  vars['--glow2-0'] ??= Palette.withAlpha(t.vars['--accent2'], 0);
   vars['--accent-soft'] ??= Palette.withAlpha(t.vars['--accent'], .16);
+  // Materials need to know which way "lit" points: a white sheen is invisible
+  // on a light deck, so those edges have to darken instead of brighten.
+  vars['--spec'] ??= dark ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,.92)';
+  vars['--shade'] ??= dark ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.22)';
+  vars['--scheme'] ??= dark ? 'dark' : 'light';
 
   // A deck accent regenerates the entire colour system, keeping typography.
   if (deck && deck.accent) {

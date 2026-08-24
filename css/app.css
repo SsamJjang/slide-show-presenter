@@ -155,8 +155,18 @@ input, textarea, select { font: inherit; color: inherit; }
 
 .stage {
   display: flex; flex-direction: column; min-width: 0;
+  /* Fading a tint to the `transparent` keyword fades it to transparent
+     BLACK, which drags the middle of the wash toward grey and leaves a
+     visible dirty ring where it meets the panel. Fade to the same hue at
+     zero alpha instead, and step the alpha so the ramp doesn't band across
+     a 1000px-wide near-black area. */
   background:
-    radial-gradient(60% 60% at 50% 0%, rgba(91,140,255,.05), transparent 70%),
+    radial-gradient(62% 62% at 50% 0%,
+      rgba(91,140,255,.055) 0%,
+      rgba(91,140,255,.040) 26%,
+      rgba(91,140,255,.022) 48%,
+      rgba(91,140,255,.009) 68%,
+      rgba(91,140,255,0)    84%),
     var(--ui-bg);
 }
 .stage-scroll {

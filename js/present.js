@@ -64,7 +64,20 @@ const Present = (() => {
 
   /* ---------- rendering ---------- */
 
-  function show(i, transition, { fromIndex = null } = {}) {
+  /* Transitions that move the whole slide as one object.
+
+     On these, the per-element entrance stagger has to be suppressed. Running
+     both means the slide flies in from the right WHILE each thing on it also
+     rises and fades independently — two different motions describing the same
+     arrival, which is the single most common way a deck ends up looking
+     amateur. Either the slide moves or its contents assemble; never both.
+
+     The quiet transitions (cut, fade, dissolve, blur, iris) don't move the
+     box, so the stagger is the only motion and it's welcome there. */
+  const HOST_MOVES = new Set(['slide', 'push', 'zoom', 'zoomOut',
+                              'cover', 'reveal', 'flip', 'swipeUp', 'glitch']);
+
+  function show(i, transition, { fromIndex = null, animate = true } = {}) {
     const slide = slides()[i];
     if (!slide) return;
 
@@ -131,8 +144,10 @@ const Present = (() => {
     // Choreographed entrance, only in presentation. Removed once it has run so
     // that later build reveals on this slide transition normally instead of
     // replaying the whole stagger.
-    node.classList.add('entering');
-    setTimeout(() => node.classList.remove('entering'), 1200);
+    if (animate && !HOST_MOVES.has(t)) {
+      node.classList.add('entering');
+      setTimeout(() => node.classList.remove('entering'), 1200);
+    }
 
     updateHud();
     syncPresenter();
@@ -279,8 +294,19 @@ const Present = (() => {
 
     applyTheme(doc.body, Store.deck.theme, Store.deck);
 
+    /* Re-render only when what's being shown actually changes.
+
+       syncPresenter runs once a second off the talk timer — it has to, for
+       the clock — and it used to rebuild both slide previews every time.
+       That restarted every animation inside them on a one-second cycle, so
+       any deck using an emphasis loop or an animated finish showed the
+       presenter a permanent twitch, and it re-decoded every image on the
+       slide sixty times a minute for a preview that hadn't changed. */
     const fill = (hostId, slide, buildStep) => {
       const host = doc.getElementById(hostId);
+      const key = slide ? `${slide.id}:${buildStep}:${Store.deck.theme}:${Store.deck.accent || ''}` : 'empty';
+      if (host.dataset.key === key) return;
+      host.dataset.key = key;
       host.innerHTML = '';
       if (!slide) { host.style.opacity = .25; return; }
       host.style.opacity = '';
@@ -330,7 +356,13 @@ const Present = (() => {
   window.addEventListener('keydown', handleKey);
   root.addEventListener('click', (e) => { if (active && !e.target.closest('.present-hud')) next(); });
   root.addEventListener('contextmenu', (e) => { if (active) { e.preventDefault(); prev(); } });
-  window.addEventListener('resize', () => { if (active) show(index, 'none'); });
+  /* Re-fit on resize without replaying anything. Rebuilding the slide used to
+     re-run the entrance stagger, so dragging a window edge — or a projector
+     renegotiating its mode mid-talk — made the slide assemble itself again in
+     front of the room. */
+  window.addEventListener('resize', () => {
+    if (active) show(index, 'none', { animate: false });
+  });
 
   document.addEventListener('fullscreenchange', () => {
     // Escaping fullscreen via the browser chrome should also leave present mode.
