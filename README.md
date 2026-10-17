@@ -26,6 +26,33 @@ decision here follows from that.
   write can't take the only copy with it.
 - **Fonts are named-first, system-fallback.** Nothing is fetched at runtime.
 
+## Test server
+
+```
+python devserver.py            # http://localhost:5599, reloads on save
+python devserver.py --lan      # also on your wifi: open it on your phone
+                               # or the laptop you will present from
+python devserver.py --no-reload
+```
+
+Files are served with caching off, and every open page refreshes when you
+save an html, js or css file.
+
+**`/test.html`** runs the deck's checks, and re-runs them on every save:
+
+- the app boots and the Connect form's shader compiles
+- every layout, the built-in deck and *your saved deck* render with no text
+  spilling out of its box
+- every Flow change plays in order: the headline leaves last and arrives
+  first, and media comes after text
+- Present opens on the selected slide, a resize never rebuilds the slide,
+  advancing never stacks slides, and a second talk still has a working form
+- the standalone export compiles and plays every slide forward and back
+
+It drives the real app in a hidden frame at `index.html?sandbox`, which saves
+under separate storage keys. Your deck is read so it can be checked, but it
+is never written.
+
 ## Presenting
 
 | | |
@@ -45,22 +72,44 @@ next, your speaker notes, a talk timer, and the wall clock.
 
 Allow pop-ups for the page or the second window won't open.
 
-## Building slides
+## The editor
 
-Press `?` in the app for the full keyboard list. The essentials:
+Four areas, each with one job:
+
+- **Library (left).** Everything you can put on a slide. The dock switches
+  between **Elements**, **Text**, **Media**, **Background** and **Layouts**,
+  and the search box filters whatever is open. Click a tile to drop it in the
+  middle of the slide, or drag it to exactly where you want it. Click the
+  open pane's icon again (or ×) to hide the library and give the canvas the
+  room.
+- **Canvas (middle).** Drag, resize, rotate, and double-click text to type.
+  **Preview** in the bar under it plays the slide's entrance right there, as
+  it will run on stage.
+- **Filmstrip (bottom).** Click to go to a slide, drag to reorder, **+** for
+  a new slide. A new slide starts empty but keeps the background and
+  transition of the one you're on, so a deck stays consistent without a
+  template.
+- **Inspector (right).** Only what applies to what you selected, in tabs:
+  **Design** (how it looks), **Motion** (how it arrives, loops, reveals and
+  travels) and **Position** (size, place, alignment, layers). With nothing
+  selected it shows **Slide** (background, transition in, stage sculpture,
+  footer) and **Deck** (theme, footer text, apply-to-all).
+
+The top bar holds only deck-wide things: title, undo/redo, the ⋯ menu (theme
+and accent, the sample Connect deck, shortcuts), Export, and Present.
 
 | | |
 |---|---|
 | Insert text / shape / image / chart | `T` `S` `I` `C` |
-| Insert device mockup | toolbar |
 | Edit text | double-click it |
 | Nudge / big nudge | arrows / `Shift` arrows |
 | Constrain drag, or lock aspect on resize | hold `Shift` |
 | Temporarily disable snapping | hold `Alt` |
 | Layouts / themes / export | `Ctrl` `L` / `K` / `E` |
+| New slide | `Ctrl` `M` |
 
-Elements snap to each other, to slide centre, and to the 140px margin grid,
-with guides shown live.
+Press `?` for the full list. Elements snap to each other, to the slide centre
+and to the 140px margin grid, with guides shown live.
 
 **20 layouts** ship pre-composed with a real typographic scale. Alongside the
 basics (title, statement, section, big number, quote, chart, code, closing)
@@ -217,6 +266,67 @@ assemble, never both.
 
 Everything respects `prefers-reduced-motion`, and every loop is frozen in
 thumbnails and print.
+
+## Connect — the Meta Connect look
+
+The Connect 2025 identity isn't one graphic. It's a family of them, each
+shown somewhere between "drafted" and "definitive". All of them are elements
+here (`js/kit.js`), in **Library → Elements**. Insert as many as you like,
+size and rotate them, tune them in **Design**, and each one has a
+**signature build** that plays when its slide arrives:
+
+| Element | What it is | Its build |
+|---|---|---|
+| **Sculpture** | the glossy 3D form, live in WebGL. Shapes: Twist, Lens, Ribbon, Pebble, Petal. Seven lights. | springs in from small and turned, then keeps breathing |
+| **Lens field** | leaf, ellipse, drop or petal shapes with meridian contour lines, as a row, grid, fan or cluster | contours draw on, then the fill comes in. *Wire → solid* progresses across the set |
+| **Wire lines** | dotted, dashed or hairline sheaves: sweep, wave, arc, rise, helix, burst, rings | draws on along the curve, then keeps marching |
+| **Bands** | iridescent stripe bars at any angle, with optional fine lines | bars rise in turn |
+| **Dot field** | halftone gradients: radial, linear or wave | grows out from its centre, or wipes across |
+
+Type gets the same treatment in **Library → Text**: display through caption,
+plus iridescent, striped, dissolving (countdown), mist, chrome, outline,
+gradient and liquid-glass finishes. **Library → Background** has solid
+fields, Connect mist fields (navy, dusk, ocean, pearl, ink glow) and the
+classic depth presets, applied to one slide or every slide. Icons (24 glyphs)
+are under Elements.
+
+With the **Flow** transition, graphics build first, behind the type. They are
+also the last thing to leave: the graphic is the stage the words arrive on.
+
+### The stage sculpture
+
+Separate from sculpture *elements*, which stay where you put them, there is
+one **stage sculpture** that belongs to the whole talk. Set it per slide in
+**Library → Background** or the Slide tab: **where** (Title, Hero, Right,
+Left, Low, Behind, Corner, Hidden), **shape**, and **light**.
+
+It is rendered the same way as a sculpture element, a glossy, twisting form
+live in WebGL (`js/connect.js`). It belongs to the talk, not to any slide.
+While you present, every parameter (place, size, angle, shape and colour)
+springs from wherever the form currently is to the new slide's setting. Advancing is one continuous glide that never cuts or restarts,
+even when you click mid-move. The editor, thumbnails and print show a cached
+snapshot from the same shader.
+
+The **Flow** transition (`js/flow.js`) is the content choreography, and order
+is the point of it. The outgoing slide leaves in *reverse* reading order:
+media and captions first, the headline last. Anything on both slides travels
+to its new place. The incoming slide then arrives in reading order: kicker,
+headline, supporting copy, then each card or icon group in turn (card, icon,
+title, copy), then media, then captions. It starts just as the last outgoing
+element clears. Order comes from what each element is and where it sits, not
+from the order you added it, so a slide built in any order plays correctly.
+The very first slide of a talk assembles the same way. The **Flow** and
+**Settle** entrances are the per-element versions for other transitions.
+
+**Present** in the top bar starts from the slide you are on. Ctrl+Enter
+starts from the top.
+
+The deck footer (brand mark bottom-left, event name bottom-right) is hoisted
+above the stage while presenting, so it holds still through every transition.
+Set it in the Deck panel. Turn it off or switch it to dark ink per slide.
+
+The standalone HTML export embeds the same form runtime, so it plays
+identically. Without WebGL the form is simply absent; nothing else changes.
 
 ## Continuity — why it plays as one space
 

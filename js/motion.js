@@ -21,6 +21,11 @@ const Motion = (() => {
   /* Grouped so the picker can present them in a sane order rather than
      as one undifferentiated wall of 26 buttons. */
   const ENTRANCES = [
+    { group: 'Connect', items: [
+      ['build',   'Signature build'],
+      ['flow',    'Flow'],
+      ['settle',  'Settle'],
+    ]},
     { group: 'Basic', items: [
       ['none',    'None'],
       ['fade',    'Fade'],
@@ -87,6 +92,9 @@ const Motion = (() => {
     // Magic Move first: it's the one that makes a deck feel continuous,
     // so it should be the obvious default rather than buried in a list.
     ['magic',    'Magic Move'],
+    // The Connect move: content dissolves through soft focus while the form
+    // glides to its next pose. Matching elements still travel.
+    ['flow',     'Flow'],
     ['none',     'Cut'],
     ['fade',     'Fade'],
     ['slide',    'Slide'],

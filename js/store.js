@@ -8,8 +8,12 @@
    ============================================================ */
 
 const Persist = (() => {
-  const KEY = 'apexdeck.current';
-  const BACKUP = 'apexdeck.backup';
+  /* `?sandbox` (used by test.html) saves under its own keys, so the test
+     suite can load decks, present and edit without ever touching the deck
+     you are actually working on — it shares this origin's storage. */
+  const NS = /[?&]sandbox\b/.test(location.search) ? 'apexdeck.sandbox.' : 'apexdeck.';
+  const KEY = NS + 'current';
+  const BACKUP = NS + 'backup';
   let timer = null;
   let lastGood = null;
 

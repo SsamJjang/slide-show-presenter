@@ -14,6 +14,27 @@ const CONTENT_W = DESIGN_W - MARGIN * 2;   // 1640
 /* ---------------- Themes ---------------- */
 
 const THEMES = {
+  /* Meta Connect. Deep navy broadcast field, white medium-weight type,
+     Meta blue with the identity's cyan / violet / magenta around it. The
+     display face is Meta's own Optimistic where installed; the fallbacks are
+     the closest geometric sans each platform ships. */
+  connect: {
+    name: 'Connect', mood: 'Meta Connect · keynote broadcast',
+    dark: true,
+    swatch: ['#000000', '#3f7dff', '#ff7fd6'],
+    vars: {
+      '--bg-flat': '#000000', '--bg': '#000000',
+      '--ink': '#ffffff', '--muted': '#9ba1ad',
+      '--accent': '#3f7dff', '--accent2': '#ff7fd6', '--accent3': '#7df3ff',
+      '--glow': 'rgba(63,125,255,.42)', '--glow2': 'rgba(164,107,255,.36)',
+      '--glow-0': 'rgba(63,125,255,0)', '--glow2-0': 'rgba(164,107,255,0)',
+      '--accent-gradient': 'linear-gradient(100deg, #9ff6ff, #5aa2ff 30%, #a46bff 62%, #ff8fdc)',
+      '--surface': 'rgba(255,255,255,.06)', '--line': 'rgba(255,255,255,.14)',
+      '--font-display': "'Optimistic Display', 'Optimistic VF', 'Montserrat', 'Inter Tight', 'Segoe UI Variable Display', 'SF Pro Display', system-ui, sans-serif",
+      '--font-body': "'Optimistic Text', 'Optimistic VF', 'Inter', 'Segoe UI Variable Text', 'SF Pro Text', system-ui, sans-serif",
+      '--font-mono': "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",
+    },
+  },
   obsidian: {
     name: 'Obsidian', mood: 'Dark · high contrast · product launch',
     dark: true,
@@ -240,7 +261,7 @@ const LAYOUTS = {
     build: () => [
       // Display type wants tight leading; the default 1.25 would overflow
       // the box at this size and clip the descenders.
-      T({ role: 'display', text: '94%', x: MARGIN, y: 320, w: 900, h: 250,
+      T({ role: 'display', text: '94%', x: MARGIN, y: 316, w: 900, h: 262,
           size: 220, weight: 700, lineHeight: 1.02, letterSpacing: -.05, color: 'var(--accent)' }),
       T({ role: 'title', text: 'less time to first result', x: MARGIN, y: 580, w: 1100, h: 100,
           size: 64, weight: 600, letterSpacing: -.02 }),
@@ -484,11 +505,448 @@ const LAYOUTS = {
     ],
   },
 
+  /* ---------- Connect layouts ----------
+     An update-keynote kit rebuilt from the Connect broadcast. Black or white
+     fields only: the colour on screen comes from the form and the icons.
+     Type is medium weight at a large size — calm, never bold.
+
+     Every slide uses the Flow transition, so the order things leave and
+     arrive in is decided by what they are (see js/flow.js), not by how the
+     slide was assembled. Each slide also says where the form should be;
+     the form itself belongs to the talk and glides between poses. */
+
+  cBrand: {
+    name: 'Connect · Brand card', hint: 'White card, centred lockup',
+    slide: { bg: '#ffffff', chrome: false, chromeTone: 'dark', transition: 'flow', form: { pose: 'off', scheme: 'pearl' } },
+    build: () => [
+      S({ shape: 'polygon', sides: 3, radius: 7, x: 764, y: 470, w: 118, h: 112, fill: '#3f7dff' }),
+      T({ role: 'display', text: 'APEX', x: 896, y: 470, w: 400, h: 120,
+          size: 100, weight: 500, valign: 'middle', letterSpacing: -.02, lineHeight: 1, color: '#0b1020' }),
+    ],
+  },
+
+  cTitle: {
+    name: 'Connect · Title', hint: 'Scattered words around the form',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'title', scheme: 'connect' } },
+    build: () => [
+      T({ role: 'display', text: 'APEX', x: 150, y: 150, w: 900, h: 200,
+          size: 176, weight: 500, letterSpacing: -.025, lineHeight: 1 }),
+      T({ role: 'display', text: 'Update', x: 1060, y: 410, w: 800, h: 200,
+          size: 176, weight: 500, letterSpacing: -.025, lineHeight: 1 }),
+      T({ role: 'display', text: '1.5.1', x: 150, y: 680, w: 700, h: 200,
+          size: 176, weight: 500, letterSpacing: -.025, lineHeight: 1 }),
+    ],
+  },
+
+  cAgenda: {
+    name: 'Connect · Agenda', hint: 'What this update covers, numbered',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'corner', scheme: 'connect' } },
+    build: () => {
+      const rows = [['Chapter one', 'One line on what it is.'], ['Chapter two', 'One line on what it is.'],
+                    ['Chapter three', 'One line on what it is.'], ['Chapter four', 'One line on what it is.']];
+      const out = [T({ role: 'title', text: 'In this update', x: MARGIN, y: 140, w: 1200, h: 100,
+                       size: 76, weight: 500, letterSpacing: -.025, lineHeight: 1.1 })];
+      rows.forEach(([t, d], i) => {
+        const y = 330 + i * 150;
+        out.push(S({ shape: 'rect', x: MARGIN, y: y - 30, w: CONTENT_W, h: 2, radius: 1, fill: 'rgba(255,255,255,.1)' }));
+        out.push(T({ role: 'caption', text: String(i + 1).padStart(2, '0'), x: MARGIN, y, w: 90, h: 70,
+                     size: 30, weight: 500, valign: 'middle', color: 'var(--muted)' }));
+        out.push(T({ role: 'subtitle', text: t, x: 260, y, w: 700, h: 70,
+                     size: 50, weight: 500, valign: 'middle', letterSpacing: -.015 }));
+        out.push(T({ role: 'body', text: d, x: 1000, y, w: 780, h: 70,
+                     size: 30, valign: 'middle', color: 'var(--muted)' }));
+      });
+      return out;
+    },
+  },
+
+  cSpeaker: {
+    name: 'Connect · Speaker', hint: 'Huge name, form to the right',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'right', scheme: 'aqua' } },
+    build: () => [
+      T({ role: 'display', text: 'Your Name', x: 140, y: 390, w: 1200, h: 220,
+          size: 190, weight: 500, letterSpacing: -.03, lineHeight: 1 }),
+      T({ role: 'subtitle', text: 'Founder, APEX', x: 146, y: 630, w: 900, h: 70,
+          size: 44, weight: 400, color: 'var(--muted)' }),
+    ],
+  },
+
+  cStatement: {
+    name: 'Connect · Statement', hint: 'One line, enormous, form below',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'low', scheme: 'connect' } },
+    build: () => [
+      T({ role: 'display', text: 'Everything happens\nin one place.', x: 140, y: 180, w: CONTENT_W, h: 400,
+          size: 150, weight: 500, letterSpacing: -.03, lineHeight: 1.05 }),
+    ],
+  },
+
+  cSection: {
+    name: 'Connect · Chapter', hint: 'Form centre stage, chapter title',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'hero', scheme: 'dusk' } },
+    build: () => [
+      T({ role: 'caption', text: 'Chapter 01', x: 140, y: 790, w: 900, h: 50,
+          size: 32, weight: 500, color: 'var(--muted)' }),
+      T({ role: 'display', text: 'Chapter', x: 140, y: 836, w: 1400, h: 150,
+          size: 120, weight: 500, letterSpacing: -.025, lineHeight: 1 }),
+    ],
+  },
+
+  cFeature: {
+    name: 'Connect · Feature card', hint: 'White card, icon + feature name',
+    slide: { bg: '#f6f7fb', chromeTone: 'dark', transition: 'flow', form: { pose: 'off', scheme: 'pearl' } },
+    build: () => [
+      makeElement('icon', { glyph: 'spark', tone: 'accent', tile: 'none', weight: 1.6,
+        x: 704, y: 486, w: 108, h: 108 }),
+      T({ role: 'display', text: 'Feature', x: 840, y: 470, w: 900, h: 140,
+          size: 104, weight: 500, valign: 'middle', letterSpacing: -.02, lineHeight: 1, color: '#0b1020' }),
+    ],
+  },
+
+  cFeatureHero: {
+    name: 'Connect · Feature + phone', hint: 'Headline, icon bullets, screenshot',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [
+        T({ role: 'kicker', text: 'Feature area', x: MARGIN, y: 180, w: 800, h: 50,
+            size: 30, weight: 500, color: 'var(--muted)' }),
+        T({ role: 'title', text: 'A headline\nin two lines.', x: MARGIN, y: 236, w: 900, h: 210,
+            size: 90, weight: 500, letterSpacing: -.03, lineHeight: 1.06 }),
+        T({ role: 'body', text: 'One or two sentences on what changed and why it matters.',
+            x: MARGIN, y: 478, w: 820, h: 100, size: 32, lineHeight: 1.45, color: 'var(--muted)' }),
+      ];
+      [['spark', 'First detail'], ['spark', 'Second detail'], ['spark', 'Third detail']].forEach(([g, t], i) => {
+        const y = 640 + i * 96;
+        out.push(makeElement('icon', { glyph: g, tile: 'dark', x: MARGIN, y, w: 64, h: 64 }));
+        out.push(T({ role: 'body', text: t, x: MARGIN + 92, y, w: 760, h: 64, size: 31, valign: 'middle' }));
+      });
+      out.push(makeElement('mockup', { kind: 'phone', x: 1200, y: 100, w: 420, h: 880, shadow: 'rim' }));
+      return out;
+    },
+  },
+
+  cFeatureWide: {
+    name: 'Connect · Wide screenshot', hint: 'Centred headline over a desktop window',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => [
+      T({ role: 'title', text: 'A headline for the screenshot', x: 0, y: 110, w: DESIGN_W, h: 96,
+          size: 72, weight: 500, align: 'center', letterSpacing: -.025, lineHeight: 1.1 }),
+      T({ role: 'body', text: 'One sentence of context, centred under it.', x: 260, y: 212, w: 1400, h: 60,
+          size: 32, align: 'center', color: 'var(--muted)' }),
+      makeElement('mockup', { kind: 'window', x: 300, y: 330, w: 1320, h: 640, radius: 22, shadow: 'rim' }),
+    ],
+  },
+
+  cTrio: {
+    name: 'Connect · Three cards', hint: 'Icon, title and copy, three across',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [
+        T({ role: 'title', text: 'Three things to know', x: MARGIN, y: 150, w: CONTENT_W, h: 96,
+            size: 76, weight: 500, letterSpacing: -.025, lineHeight: 1.1 }),
+        T({ role: 'body', text: 'A short line that frames all three.', x: MARGIN, y: 254, w: 1200, h: 56,
+            size: 32, color: 'var(--muted)' }),
+      ];
+      ['First', 'Second', 'Third'].forEach((t, i) => {
+        const x = MARGIN + i * 560, y = 380;
+        out.push(S({ shape: 'rect', x, y, w: 520, h: 540, radius: 34, fill: '#0e0f13',
+                     stroke: 'rgba(255,255,255,.08)', strokeWidth: 2 }));
+        out.push(makeElement('icon', { glyph: 'spark', tile: 'dark', x: x + 48, y: y + 52, w: 96, h: 96 }));
+        out.push(T({ role: 'subtitle', text: t, x: x + 48, y: y + 196, w: 424, h: 64,
+                     size: 44, weight: 500, letterSpacing: -.015 }));
+        out.push(T({ role: 'body', text: 'Two lines on what this does for students.', x: x + 48, y: y + 270, w: 424, h: 200,
+                     size: 29, lineHeight: 1.5, color: 'var(--muted)' }));
+      });
+      return out;
+    },
+  },
+
+  cGrid: {
+    name: 'Connect · Six-up grid', hint: 'Icon tiles with short copy, 3 × 2',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [T({ role: 'title', text: 'And a lot more', x: MARGIN, y: 140, w: CONTENT_W, h: 96,
+                       size: 76, weight: 500, letterSpacing: -.025, lineHeight: 1.1 })];
+      for (let i = 0; i < 6; i++) {
+        const x = MARGIN + (i % 3) * 560, y = 340 + Math.floor(i / 3) * 300;
+        out.push(makeElement('icon', { glyph: 'spark', tile: 'dark', x, y, w: 84, h: 84 }));
+        out.push(T({ role: 'subtitle', text: 'Item title', x, y: y + 112, w: 480, h: 56,
+                     size: 38, weight: 500, letterSpacing: -.01 }));
+        out.push(T({ role: 'body', text: 'One short line about it.', x, y: y + 172, w: 470, h: 90,
+                     size: 27, lineHeight: 1.45, color: 'var(--muted)' }));
+      }
+      return out;
+    },
+  },
+
+  cCompare: {
+    name: 'Connect · Before / after', hint: 'Two screens side by side',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => [
+      T({ role: 'title', text: 'Before and after', x: 0, y: 110, w: DESIGN_W, h: 96,
+          size: 72, weight: 500, align: 'center', letterSpacing: -.025, lineHeight: 1.1 }),
+      T({ role: 'caption', text: 'Before', x: 520, y: 236, w: 400, h: 50,
+          size: 32, weight: 500, align: 'center', color: 'var(--muted)' }),
+      T({ role: 'caption', text: 'After', x: 1000, y: 236, w: 400, h: 50,
+          size: 32, weight: 500, align: 'center', color: '#ffffff' }),
+      makeElement('mockup', { kind: 'phone', x: 560, y: 300, w: 320, h: 660, shadow: 'lifted', opacity: .78 }),
+      makeElement('mockup', { kind: 'phone', x: 1040, y: 300, w: 320, h: 660, shadow: 'rim' }),
+    ],
+  },
+
+  cProduct: {
+    name: 'Connect · Product on black', hint: 'Rim-lit device, name beneath',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => [
+      makeElement('mockup', { kind: 'phone', x: 760, y: 110, w: 400, h: 840,
+        shadow: 'rim', emphasis: 'levitate' }),
+      T({ role: 'title', text: 'Product', x: 140, y: 800, w: 520, h: 80,
+          size: 64, weight: 500, letterSpacing: -.02 }),
+      T({ role: 'body', text: 'One line on what it is.', x: 140, y: 884, w: 560, h: 60,
+          size: 30, lineHeight: 1.4, color: 'var(--muted)' }),
+    ],
+  },
+
+  cPhones: {
+    name: 'Connect · App row', hint: 'Five screens, labelled',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const names = ['Feed', 'Lounges', 'Polls', 'Chat', 'Profile'];
+      const out = [];
+      names.forEach((n, i) => {
+        const big = i === 2;
+        const w = big ? 330 : 296, h = big ? 690 : 620;
+        const x = 140 + i * 340 + (296 - w) / 2;
+        const y = big ? 230 : 265;
+        out.push(T({ role: 'caption', text: n, x: x - 20, y: y - 76, w: w + 40, h: 50,
+          size: 30, weight: 500, align: 'center', color: 'var(--muted)' }));
+        out.push(makeElement('mockup', { kind: 'phone', x, y, w, h, shadow: big ? 'rim' : 'lifted' }));
+      });
+      return out;
+    },
+  },
+
+  cStat: {
+    name: 'Connect · Big number', hint: 'Iridescent figure, form beside it',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'left', scheme: 'aqua' } },
+    build: () => [
+      T({ role: 'display', text: '00', x: 820, y: 310, w: 1000, h: 336,
+          size: 280, weight: 500, lineHeight: 1, letterSpacing: -.03, finish: 'connect' }),
+      T({ role: 'subtitle', text: 'what the number means', x: 830, y: 650, w: 960, h: 70,
+          size: 46, weight: 400, color: 'var(--muted)' }),
+    ],
+  },
+
+  cStats: {
+    name: 'Connect · Three numbers', hint: 'Figures with labels, three across',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [T({ role: 'title', text: 'By the numbers', x: MARGIN, y: 150, w: CONTENT_W, h: 96,
+                       size: 76, weight: 500, letterSpacing: -.025, lineHeight: 1.1 })];
+      ['00', '00', '00'].forEach((n, i) => {
+        const x = MARGIN + i * 560;
+        out.push(S({ shape: 'rect', x, y: 420, w: 480, h: 2, radius: 1, fill: 'rgba(255,255,255,.14)' }));
+        out.push(T({ role: 'display', text: n, x, y: 460, w: 500, h: 180, size: 160, weight: 500,
+                     lineHeight: 1, letterSpacing: -.035, finish: 'connect' }));
+        out.push(T({ role: 'body', text: 'label', x, y: 660, w: 480, h: 60, size: 32, color: 'var(--muted)' }));
+      });
+      return out;
+    },
+  },
+
+  cQuote: {
+    name: 'Connect · Quote', hint: 'A student in their own words',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'right', scheme: 'dusk' } },
+    build: () => [
+      T({ role: 'display', text: '“A quote from a student\nabout what changed\nfor them.”', x: MARGIN, y: 250, w: 1150, h: 420,
+          size: 78, weight: 500, lineHeight: 1.16, letterSpacing: -.02 }),
+      T({ role: 'subtitle', text: 'Student name', x: MARGIN, y: 730, w: 800, h: 56, size: 36, weight: 500 }),
+      T({ role: 'caption', text: 'Grade, club or role', x: MARGIN, y: 784, w: 800, h: 50, size: 30, color: 'var(--muted)' }),
+    ],
+  },
+
+  cFixes: {
+    name: 'Connect · Fixes', hint: 'Bug fixes and polish, two columns',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => [
+      makeElement('icon', { glyph: 'tool', tile: 'dark', x: MARGIN, y: 140, w: 88, h: 88 }),
+      T({ role: 'title', text: 'Fixes and polish', x: MARGIN + 120, y: 140, w: 1200, h: 88,
+          size: 72, weight: 500, valign: 'middle', letterSpacing: -.025, lineHeight: 1 }),
+      T({ role: 'body', text: 'A fix, in one line.\nA fix, in one line.\nA fix, in one line.\nA fix, in one line.\nA fix, in one line.',
+          x: MARGIN, y: 320, w: 780, h: 620, size: 30, lineHeight: 1.85, color: 'var(--muted)' }),
+      T({ role: 'body', text: 'A fix, in one line.\nA fix, in one line.\nA fix, in one line.\nA fix, in one line.\nA fix, in one line.',
+          x: 1000, y: 320, w: 780, h: 620, size: 30, lineHeight: 1.85, color: 'var(--muted)' }),
+    ],
+  },
+
+  cRoadmap: {
+    name: 'Connect · What’s next', hint: 'Now, next, later',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [T({ role: 'title', text: 'What’s next', x: MARGIN, y: 150, w: CONTENT_W, h: 96,
+                       size: 76, weight: 500, letterSpacing: -.025, lineHeight: 1.1 })];
+      ['Now', 'Next', 'Later'].forEach((label, i) => {
+        const x = MARGIN + i * 560, y = 330;
+        out.push(S({ shape: 'rect', x, y, w: 520, h: 600, radius: 34, fill: '#0e0f13',
+                     stroke: 'rgba(255,255,255,.08)', strokeWidth: 2 }));
+        out.push(T({ role: 'kicker', text: label, x: x + 48, y: y + 50, w: 424, h: 56,
+                     size: 40, weight: 500, finish: 'connect' }));
+        out.push(T({ role: 'body', text: 'An item\nAn item\nAn item', x: x + 48, y: y + 130, w: 424, h: 420,
+                     size: 30, lineHeight: 1.8, color: 'var(--muted)' }));
+      });
+      return out;
+    },
+  },
+
+  cLive: {
+    name: 'Connect · Live demo', hint: 'Red pill, portrait feed',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'corner', scheme: 'connect' } },
+    build: () => [
+      S({ shape: 'rect', x: 72, y: 64, w: 214, h: 56, radius: 28, fill: '#e5243b' }),
+      T({ role: 'kicker', text: '●  Live demo', x: 72, y: 64, w: 214, h: 56,
+          size: 24, weight: 600, align: 'center', valign: 'middle', color: '#ffffff' }),
+      makeElement('mockup', { kind: 'phone', x: 770, y: 110, w: 380, h: 820, shadow: 'rim' }),
+    ],
+  },
+
+  cAvailable: {
+    name: 'Connect · Available', hint: 'Where to get it, platform pills',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'off', scheme: 'connect' } },
+    build: () => {
+      const out = [
+        T({ role: 'title', text: 'Available today', x: MARGIN, y: 300, w: 1000, h: 140,
+            size: 120, weight: 500, letterSpacing: -.03, lineHeight: 1 }),
+        T({ role: 'body', text: 'Update from your app store, or just refresh on the web.', x: MARGIN, y: 466, w: 900, h: 60,
+            size: 34, color: 'var(--muted)' }),
+      ];
+      [['globe', 'Web'], ['phone', 'Android'], ['desktop', 'Windows'], ['desktop', 'macOS']].forEach(([g, label], i) => {
+        const x = MARGIN + i * 246, y = 590;
+        out.push(S({ shape: 'rect', x, y, w: 226, h: 72, radius: 36, fill: '#121419',
+                     stroke: 'rgba(255,255,255,.1)', strokeWidth: 2 }));
+        out.push(makeElement('icon', { glyph: g, tile: 'none', x: x + 26, y: y + 18, w: 36, h: 36 }));
+        out.push(T({ role: 'body', text: label, x: x + 74, y, w: 140, h: 72, size: 28, weight: 500, valign: 'middle' }));
+      });
+      out.push(makeElement('mockup', { kind: 'phone', x: 1260, y: 120, w: 410, h: 860, rot: 6,
+        shadow: 'rim', emphasis: 'float' }));
+      return out;
+    },
+  },
+
+  cThanks: {
+    name: 'Connect · Thank you', hint: 'Closing, form behind',
+    slide: { bg: '#000000', transition: 'flow', form: { pose: 'behind', scheme: 'connect' } },
+    build: () => [
+      T({ role: 'display', text: 'Thank you', x: 0, y: 420, w: DESIGN_W, h: 210,
+          size: 170, weight: 500, align: 'center', valign: 'middle', lineHeight: 1, letterSpacing: -.03 }),
+      T({ role: 'subtitle', text: 'Questions?', x: 0, y: 640, w: DESIGN_W, h: 60,
+          size: 40, weight: 400, align: 'center', color: 'var(--muted)' }),
+    ],
+  },
+
   blank: { name: 'Blank', hint: 'Start from nothing', build: () => [] },
 };
 
-/* A deck that already looks finished, so a new user never faces a void. */
-function starterDeck() {
+/* An APEX update keynote, in the Connect style, filled with the 1.5.1
+   release so every layout shows real content. The running order is the
+   reusable part: brand → title → agenda → thesis, then per chapter an
+   opener and one to three feature slides, then numbers, fixes, a live demo,
+   what's next, availability and thanks. For the next release, duplicate a
+   chapter and replace the words. */
+function connectDeck() {
+  const d = makeDeck();
+  d.title = 'APEX 1.5.1 Update';
+  d.theme = 'connect';
+  d.accent = null;
+  d.chrome = { on: true, left: 'APEX', right: 'APEX Connect 2026' };
+
+  // `form` overrides the layout's pose, so repeated layouts (the chapter
+  // openers) still send the form somewhere new each time.
+  const from = (key, notes, edit, form) => {
+    const l = LAYOUTS[key];
+    const s = makeSlide({ ...structuredClone(l.slide || {}), elements: l.build(), notes });
+    if (edit) edit(s.elements, s);
+    if (form) s.form = form;
+    return s;
+  };
+
+  /* Fill a layout's text boxes in reading order, and its icons in order. */
+  const fill = (texts, icons) => (els) => {
+    const t = els.filter(e => e.type === 'text');
+    (texts || []).forEach((v, i) => { if (v != null && t[i]) t[i].text = v; });
+    const ic = els.filter(e => e.type === 'icon');
+    (icons || []).forEach((g, i) => { if (ic[i]) ic[i].glyph = g; });
+  };
+
+  d.slides = [
+    from('cBrand', 'Lights down. Hold on the white card, then walk out.'),
+    from('cTitle', 'The form glides in from the brand card. Let it settle before you speak.'),
+    from('cAgenda', 'Four chapters. Read the names, not the descriptions.', fill([null,
+      '01', 'Messages', 'Rich text, hearts and Googly Eyes.',
+      '02', 'Lounges', 'Now living inside Messages.',
+      '03', 'Polls', 'Redesigned from the ground up.',
+      '04', 'Posts & PDFs', 'Profile posts and a built-in viewer.'])),
+    from('cStatement', 'The thesis of this update. Say it, then pause.'),
+
+    from('cSection', 'Chapter one.', fill(['Chapter 01', 'Messages'])),
+    from('cFeatureHero', 'Show the composer. Type something bold live if you can.', fill([
+      'Messages', 'Rich text,\nas you type.',
+      'DMs and Lounges now support real formatting — shown live, with no markers.',
+      'Bold, italic, strikethrough, code and headings',
+      'Lists nest with Tab, just like a document',
+      'Pasting from Docs or Word keeps the style'], ['pen', 'file', 'palette'])),
+    from('cTrio', 'Three small things people will love.', fill([
+      'More ways to say it', 'Small touches that make chat feel alive.',
+      'Double-tap to heart', 'Tap any message twice to send a heart. Touch screens.',
+      'Googly Eyes', 'A chat theme whose eyes roll as you tilt and shake your phone.',
+      'Live formatting', 'Markdown or shortcuts, rendered the moment you type.'], ['heart', 'smile', 'pen'])),
+
+    from('cSection', 'Chapter two.', fill(['Chapter 02', 'Lounges']), { pose: 'right', scheme: 'aqua' }),
+    from('cCompare', 'Left: the old separate page. Right: Lounges inside Messages.', fill([
+      'Lounges moved home', 'Before — its own page', 'After — inside Messages'])),
+    from('cFeatureWide', 'Drop a desktop screenshot of Messages with a lounge open.', fill([
+      'Every lounge, one tap away',
+      'Open a lounge from Home, Explore, a notification or a link. Each has its own address.'])),
+
+    from('cSection', 'Chapter three.', fill(['Chapter 03', 'Polls']), { pose: 'low', scheme: 'connect' }),
+    from('cFeature', 'Feature card. Name it, then go to the details.', fill(['Polls'], ['poll'])),
+    from('cGrid', 'Do not read these out. Give the room ten seconds.', fill([
+      'Polls, redesigned',
+      'A cleaner card', 'How to answer, votes and deadline in one line.',
+      'Many right answers', 'Quizzes can have more than one correct answer.',
+      'New settings', 'Segmented choices, switches and toggles.',
+      'Real deadlines', 'Pick the exact date and time a poll closes.',
+      'Edit after sending', 'Fix a poll you have already sent.',
+      'On the shelf', 'Lounge polls live on the Resources shelf.'],
+      ['poll', 'check', 'tool', 'calendar', 'pen', 'file'])),
+
+    from('cSection', 'Chapter four.', fill(['Chapter 04', 'Posts & PDFs']), { pose: 'right', scheme: 'dusk' }),
+    from('cFeatureHero', 'Drop a screenshot of the New post composer.', fill([
+      'Posts', 'Post straight\nto your profile.',
+      'No circuit needed. **New post** now sits right next to Your posts.',
+      'The composer starts with photos first',
+      'PDFs open inside APEX, every page full width',
+      'Pinch, or Ctrl + scroll, to zoom'], ['image', 'file', 'search'])),
+    from('cPhones', 'The whole app at a glance. Fill each phone with a screenshot.'),
+
+    from('cStats', 'Check these against the release before presenting.', fill([
+      'This update', '6', 'new features', '11', 'fixes', '4', 'platforms'])),
+    from('cFixes', 'Point at it, do not read it.', fill([
+      'Fixes and polish',
+      'Search is visible and faster on PCs\nLounge pictures and messages line up\nRepeated Korean characters are fixed\nSend shows when only attaching images\nThe mobile 100vh bug is gone',
+      'Toasts sit in the bottom-right corner\nThe page-stitching bug is fixed\nAdmins can accept or deny flagged posts\nEditing a post no longer duplicates it\nMobile toasts are nudged into place'])),
+    from('cLive', 'Switch to the live demo. Keep a screen recording in the phone as a backup.'),
+    from('cRoadmap', 'Be specific about now, honest about later. Replace these.', fill([
+      'What’s next', 'Now', 'APEX 1.5.1\nOut today\nOn every platform', 'Next', 'Your next feature\nAnother one\nAnother one', 'Later', 'A bigger idea\nAnother one\nAnother one'])),
+    from('cAvailable', 'Tell them how to get it, today.'),
+    from('cThanks', 'Thank the room. Take questions.'),
+  ];
+  return d;
+}
+
+/* A new user lands on the Connect deck. */
+function starterDeck() { return connectDeck(); }
+
+/* The original launch deck, kept so the older look is still one click away. */
+function classicDeck() {
   const d = makeDeck();
   d.title = 'Apex — Launch Deck';
   d.theme = 'obsidian';

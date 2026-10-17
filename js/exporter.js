@@ -68,9 +68,10 @@ const Exporter = (() => {
         bg: s.bg || '',
       }));
       const layers = Backgrounds.html(s);
-      return `<section class="pg" data-trans="${s.transition || 'fade'}" data-atmos="${atmos}">` +
+      const form = s.form ? ` data-form="${Render.esc(JSON.stringify(s.form))}"` : '';
+      return `<section class="pg" data-trans="${s.transition || 'fade'}" data-atmos="${atmos}"${form}>` +
              `<template class="atmos-src">${layers}</template>` +
-             `${Render.slideHTML(s, deck)}</section>`;
+             `${Render.slideHTML(s, deck, { noForm: true })}</section>`;
     }).join('\n');
 
     const html = `<!DOCTYPE html>
@@ -92,7 +93,13 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;
 .pg .slide{background:transparent!important}
 .pg .slide>.slide-bg,.pg .slide>.slide-bg-overlay,
 .pg .slide>.slide-grain,.pg .slide>.slide-vignette{display:none}
+#form{position:absolute;z-index:0;pointer-events:none}
 .slide-host{transform-origin:center center}
+/* Centre the slide by its own middle, not by grid alignment: a 1920px slide
+   is wider than most laptop windows, and an overflowing grid item is pinned
+   to the left edge — so on anything under 1080p the scaled slide sat far off
+   to the right. */
+.pg .slide{position:absolute;left:50%;top:50%;margin:-${DESIGN_H / 2}px 0 0 -${DESIGN_W / 2}px}
 /* Eased alpha: a straight two-stop fade to transparent bands into visible
    steps across the bottom of a projector, and it's the last thing on screen
    under the slide. */
@@ -108,7 +115,7 @@ body{cursor:none}
 body.ui{cursor:default}
 @media (prefers-reduced-motion:reduce){.pg{animation-duration:.01ms!important}}
 </style></head>
-<body><div id="deck"><div id="atmos"></div>${slidesHTML}</div>
+<body><div id="deck"><div id="atmos"></div><canvas id="form"></canvas>${slidesHTML}</div>
 <div id="hud"><span id="n"></span><span style="margin-left:auto">← → to navigate · F for fullscreen</span></div>
 <script>
 const pages=[...document.querySelectorAll('.pg')];
@@ -121,6 +128,7 @@ function fit(){
     el.style.transform='scale('+scale+')';
     el.style.transformOrigin='center center';
   });
+  placeForm();
 }
 
 /* Persistent atmosphere: cross-dissolve only when the look actually changes,
@@ -213,11 +221,44 @@ const HOST_MOVES=['slide','push','zoom','zoomOut','cover','reveal','flip','swipe
 const TRANS=['fade','slide','push','zoom','zoomOut','blur','iris','cover','reveal','flip',
              'swipeUp','dissolve','glitch'];
 let clearing=null;
+/* The Connect choreography — the editor's own, embedded verbatim. */
+${connectFlow.toString()}
+/* A page left mid-flow keeps its exit styles; wipe them before it plays
+   again, or going back would land on an empty slide. */
+function resetPg(p){
+  p.querySelectorAll('.el').forEach(e=>{
+    [e,e.querySelector('.el-anim')].forEach(n=>{if(!n)return;
+      n.getAnimations().forEach(x=>x.cancel());
+      n.style.transform='';n.style.opacity='';n.style.animation='';
+      if(n!==e)n.style.filter='';
+      n.style.transformOrigin='';n.style.visibility='';});
+    if(+e.dataset.rot)e.style.transform='rotate('+e.dataset.rot+'deg)';
+    e.classList.remove('magic');
+  });
+  p.classList.remove('building');
+}
+/* Live sculptures, per page: brought up when a page plays, released when
+   it leaves (browsers allow only a handful of WebGL contexts). */
+${connectLiven.toString()}
+const live=new Map();
+function livenPg(p){if(!live.has(p))live.set(p,connectLiven(p,ConnectForm,{intro:true}));}
+function releasePg(p){const r=live.get(p);if(r){r();live.delete(p);}}
+/* The Connect form — the editor's own runtime, embedded verbatim. */
+const ConnectForm=(${connectFormRuntime.toString()})();
+const formCanvas=document.getElementById('form');
+const form=ConnectForm.mount(formCanvas);
+function placeForm(){
+  const w=${DESIGN_W}*scale,h=${DESIGN_H}*scale;
+  formCanvas.style.width=w+'px';formCanvas.style.height=h+'px';
+  formCanvas.style.left=(innerWidth-w)/2+'px';formCanvas.style.top=(innerHeight-h)/2+'px';
+  form.resize();
+}
 
 /* Drop every transition class a page might still be wearing. A presenter
    clicking faster than the animation must not accumulate them. */
 function strip(p){
-  p.className='pg'+(p.classList.contains('on')?' on':'');
+  // 'building' survives: element builds outlast the page transition.
+  p.className='pg'+(p.classList.contains('on')?' on':'')+(p.classList.contains('building')?' building':'');
   p.style.zIndex='';
 }
 
@@ -228,16 +269,28 @@ function show(n,opts){
   const to=pages[target];
   const changed=target!==i;
   i=target;
+  const t=to.dataset.trans||'fade';
   syncAtmos(to,first);
+  form.set(to.dataset.form?JSON.parse(to.dataset.form):null,first);
   clearTimeout(clearing);
+  pages.forEach(p=>{if(p!==to&&p!==from)releasePg(p);});
+  if(changed||first){
+    if(t!=='flow'){resetPg(to);void to.offsetWidth;to.classList.add('building');}
+    livenPg(to);
+  }
   pages.forEach(p=>{p.classList.remove('entering','leaving');
     TRANS.forEach(t=>p.classList.remove('enter-'+t,'exit-'+t));});
 
-  const t=to.dataset.trans||'fade';
-  if(changed&&!first&&t==='magic'){
+  if(t==='flow'&&(changed||first)){
+    resetPg(to);
+    pages.forEach((p,k)=>p.classList.toggle('on',k===i||(changed&&p===from)));
+    const fl=connectFlow(changed&&!first?from:null,to);
+    if(changed&&!first)clearing=setTimeout(()=>{from.classList.remove('on');releasePg(from);},fl.duration+80);
+  }else if(changed&&!first&&t==='magic'){
+    resetPg(to);
     pages.forEach((p,k)=>p.classList.toggle('on',k===i||p===from));
-    magic(from,to);
-    clearing=setTimeout(()=>{if(from!==to)from.classList.remove('on');},900);
+    const d=magic(from,to);
+    clearing=setTimeout(()=>{if(from!==to){from.classList.remove('on');releasePg(from);}},d+80);
   }else if(changed&&!first&&TRANS.indexOf(t)>=0){
     /* The outgoing page keeps its box while it leaves, so the two overlap
        for the length of the transition exactly as they do in rehearsal. */
@@ -251,9 +304,10 @@ function show(n,opts){
     from.style.zIndex=(t==='reveal')?3:1;
     to.style.zIndex=(t==='reveal')?1:2;
     if(HOST_MOVES.indexOf(t)<0)to.classList.add('entering');
-    clearing=setTimeout(()=>{strip(from);strip(to);},1300);
+    clearing=setTimeout(()=>{strip(from);strip(to);releasePg(from);},1300);
   }else{
     pages.forEach((p,k)=>p.classList.toggle('on',k===i));
+    if(from!==to)releasePg(from);
     if(changed&&!first)to.classList.add('entering');
     if(changed&&!first)clearing=setTimeout(()=>strip(to),1300);
   }

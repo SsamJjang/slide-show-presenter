@@ -537,7 +537,7 @@ const Canvas = (() => {
   return {
     render, patchLive, setScale, zoomFit, zoomBy, drawSelection, isEditing,
     addElement, updateSelected, deleteSelected, duplicateSelected,
-    reorder, align, distribute, nudge, insertImageFile, fileToDataURL,
+    reorder, align, distribute, nudge, insertImageFile, fileToDataURL, toDesign,
     get scale() { return scale; },
   };
 })();

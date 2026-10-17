@@ -33,6 +33,9 @@ const Render = (() => {
     lifted: '0 16px 34px rgba(0,0,0,.42)',
     dramatic: '0 32px 64px rgba(0,0,0,.62)',
     glow: '0 0 40px var(--glow)',
+    // Connect product lighting: a cool blue rim, as if lit from behind on a
+    // dark stage. One shadow, wide and saturated.
+    rim: '0 0 70px rgba(47,107,255,.55)',
   };
 
   function elementStyle(el) {
@@ -62,7 +65,10 @@ const Render = (() => {
     if (el.uppercase) st.push('text-transform:uppercase');
     const finish = el.finish || (el.gradient ? 'gradient' : 'none');
     const cls = 'e-text role-' + el.role + (finish !== 'none' ? ' finish-' + finish : '');
-    return `<div class="${cls}" style="${st.join(';')}">${richText(el.text)}</div>`;
+    /* One inner block, so the flex column that does vertical alignment sees a
+       single child. Without it every {accent} or **bold** span became its own
+       flex item and stacked on a line of its own. */
+    return `<div class="${cls}" style="${st.join(';')}"><div class="tx">${richText(el.text)}</div></div>`;
   }
 
   /* Every shape is a generated path in the element's own pixel box, so
@@ -70,8 +76,14 @@ const Render = (() => {
      stretched viewBox. Material (glass / liquid glass) is a DOM layer
      clipped to that same path. */
   function renderShape(el) {
-    const fill = el.fill ? `var(--fill-${el.fill}, ${el.fill})` : 'transparent';
-    const stroke = el.stroke ? `var(--fill-${el.stroke}, ${el.stroke})` : 'none';
+    /* Palette names resolve through --fill-*; anything else is a literal
+       colour. Wrapping a literal in var() made '--fill-#e5243b' — not a valid
+       custom property name, so the whole value was dropped and every hex or
+       rgba fill silently painted black. */
+    const paint = (v, none) => !v ? none
+      : /^[a-z][a-z0-9]*$/i.test(v) && v !== 'transparent' ? `var(--fill-${v}, ${v})` : v;
+    const fill = paint(el.fill, 'transparent');
+    const stroke = paint(el.stroke, 'none');
     const sw = el.strokeWidth || 0;
     const w = Math.max(el.w || 1, 1), h = Math.max(el.h || 1, 1);
     const d = Shapes.path(el);
@@ -88,7 +100,8 @@ const Render = (() => {
     return `<svg class="e-shape" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg">
       <path d="${d}" fill="${fill}"
-        ${sw ? `stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"` : ''}/>
+        ${sw ? `stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"` : ''}
+        ${sw && el.dash ? `stroke-dasharray="${esc(el.dash)}" stroke-linecap="round"` : ''}/>
     </svg>`;
   }
 
@@ -203,6 +216,12 @@ const Render = (() => {
       case 'table':  return renderTable(el);
       case 'chart':  return Charts.render(el);
       case 'mockup': return renderMockup(el);
+      case 'icon':   return Connect.renderIcon(el);
+      case 'sculpture': return Kit.renderSculpture(el);
+      case 'lens':      return Kit.renderLens(el);
+      case 'wires':     return Kit.renderWires(el);
+      case 'bands':     return Kit.renderBands(el);
+      case 'halftone':  return Kit.renderHalftone(el);
       default:       return '';
     }
   }
@@ -244,17 +263,22 @@ const Render = (() => {
     const layers = Backgrounds.html(slide);
     const els = slide.elements
       .map((el, index) => renderElement(el, { ...opts, index })).join('');
-    return `<div class="slide"${bg}>${layers}${els}</div>`;
+    // The form sits between the field and the content. Surfaces that run the
+    // live form (presentation, export) ask for it to be left out.
+    const form = opts.noForm ? '' : Connect.formHTML(slide);
+    const chrome = Connect.chromeHTML(deck, slide)
+      .replace('class="slide-chrome"', `class="slide-chrome${Connect.chromeDark(slide) ? ' tone-dark' : ''}"`);
+    return `<div class="slide"${bg}>${layers}${form}${els}${chrome}</div>`;
   }
 
   /* Build a live DOM node sized to `scale`. */
-  function slideNode(slide, deck, { scale = 1, build = Infinity } = {}) {
+  function slideNode(slide, deck, { scale = 1, build = Infinity, noForm = false } = {}) {
     const host = document.createElement('div');
     host.className = 'slide-host';
     host.style.width = DESIGN_W + 'px';
     host.style.height = DESIGN_H + 'px';
     host.style.transform = `scale(${scale})`;
-    host.innerHTML = slideHTML(slide, deck);
+    host.innerHTML = slideHTML(slide, deck, { noForm });
     applyBuild(host, build);
     return host;
   }

@@ -107,6 +107,35 @@ const Backgrounds = (() => {
       ],
     },
 
+    /* ---- Connect mist fields ----
+       Soft gradient atmospheres from the Connect identity: slow, deep blooms
+       in fixed Connect tints over a base colour the field sets for itself
+       (see Library backgrounds). */
+    mistNavy: {
+      name: 'Navy mist', hint: 'Deep blue broadcast field',
+      blobs: [blob(10, 96, 96, 92, 'cx-blue', 41), blob(92, 8, 76, 80, 'cx-violet', 53, -14),
+              blob(62, 60, 70, 64, 'cx-cyan', 37, -6)],
+    },
+    mistDusk: {
+      name: 'Dusk mist', hint: 'Violet into warm orange',
+      blobs: [blob(14, 90, 90, 90, 'cx-violet', 43), blob(88, 14, 80, 84, 'cx-orange', 51, -9),
+              blob(60, 70, 70, 70, 'cx-magenta', 35, -21)],
+    },
+    mistOcean: {
+      name: 'Ocean mist', hint: 'Teal and blue depths',
+      blobs: [blob(8, 20, 90, 90, 'cx-teal', 47), blob(90, 86, 86, 86, 'cx-blue', 39, -12),
+              blob(50, 40, 60, 60, 'cx-cyan', 57, -27)],
+    },
+    mistPearl: {
+      name: 'Pearl mist', hint: 'Pale daylight pastels',
+      blobs: [blob(12, 90, 80, 90, 'cx-pink', 39), blob(88, 14, 80, 84, 'cx-sky', 47, -9),
+              blob(70, 96, 64, 70, 'cx-peach', 31, -17), blob(30, 8, 60, 60, 'cx-lilac', 57, -25)],
+    },
+    inkGlow: {
+      name: 'Ink glow', hint: 'Black with a low blue light',
+      blobs: [blob(50, 118, 120, 60, 'cx-blue', 33), blob(80, 0, 60, 50, 'cx-violet', 49, -13)],
+    },
+
     duotone: {
       name: 'Duotone', hint: 'Bold two-colour split',
       blobs: [

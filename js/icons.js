@@ -12,6 +12,8 @@ const ICONS = (() => {
     shape:   s('<rect x="3" y="3" width="9" height="9" rx="1.5"/><circle cx="16.5" cy="16.5" r="4.5"/>'),
     image:   s('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/>'),
     chart:   s('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    ribbon:  s('<path d="M2 17c5 1 7-9 12-9s5 4 8 3"/><path d="M2 13c5 1 7-9 12-9s5 4 8 3" stroke-dasharray=".1 3.2"/><path d="M2 21c5 1 7-9 12-9s5 4 8 3"/>'),
+    spark:   s('<path d="M12 3c.6 4.4 2.6 6.4 7 7-4.4.6-6.4 2.6-7 7-.6-4.4-2.6-6.4-7-7 4.4-.6 6.4-2.6 7-7z"/>'),
     code:    s('<path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/>'),
     table:   s('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/>'),
     layout:  s('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/>'),
@@ -28,6 +30,8 @@ const ICONS = (() => {
     plus:    s('<path d="M12 5v14M5 12h14"/>'),
     device:  s('<rect x="2" y="4" width="14" height="11" rx="1.6"/><path d="M2 8h14"/><rect x="17" y="9" width="5" height="11" rx="1.4"/>'),
     check:   s('<path d="M4 12.5l5 5 11-11"/>'),
+    more:    s('<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>'),
+    close:   s('<path d="M6 6l12 12M18 6L6 18"/>'),
   };
 })();
 

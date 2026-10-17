@@ -100,25 +100,63 @@ const Inspector = (() => {
     }
   }
 
-  /* --- nothing selected: slide + deck properties --- */
+  /* ---------- tabs ----------
+     The inspector only ever shows one tab of one thing. Which tab is open is
+     remembered per mode, so selecting another element keeps you on Motion
+     if that's where you were working. */
+  const tabs = { el: 'design', slide: 'slide' };
+
+  const TYPE_NAMES = {
+    text: 'Text', shape: 'Shape', image: 'Image', mockup: 'Device', chart: 'Chart',
+    table: 'Table', code: 'Code', icon: 'Icon', sculpture: 'Sculpture', lens: 'Lens field',
+    wires: 'Wire lines', bands: 'Bands', halftone: 'Dot field',
+  };
+
+  function head(title, sub, mode, list) {
+    return `<div class="insp-head">
+      <div class="insp-kind">${title}${sub ? ` <span>${sub}</span>` : ''}</div>
+      <div class="insp-tabs" data-tabs="${mode}">${list.map(([k, label]) =>
+        `<button data-tab="${k}" class="${tabs[mode] === k ? 'on' : ''}">${label}</button>`).join('')}</div>
+    </div>`;
+  }
+
+  /* --- nothing selected: this slide, or the whole deck --- */
 
   function slidePanel() {
     const slide = Store.currentSlide();
     if (!slide) return '<div class="insp-empty">No slide</div>';
     const i = Store.sel.slide;
+    const header = head(`Slide ${i + 1}`, `of ${Store.deck.slides.length}`, 'slide', [['slide', 'Slide'], ['deck', 'Deck']]);
 
-    return `
-      <div class="insp-empty">
-        <b>Slide ${i + 1}</b>
-        Click an element to edit it.<br>Double-click text to type.
-      </div>
-
-      ${section('Transition', `
-        ${chips('Style', 'transition', slide.transition,
-          Motion.TRANSITIONS.map(([k, label]) => [k, label]))}
+    if (tabs.slide === 'deck') return header + `
+      ${section('Look', `
+        ${select('Theme', 'deckTheme', Store.deck.theme,
+          Object.entries(THEMES).map(([k, t]) => [k, t.name]))}
+        <div class="btnrow"><button class="btn" data-act="themeSheet">${'${icon:palette}'} Theme &amp; accent…</button></div>
       `)}
+      ${section('Footer', `
+        <div class="btnrow" style="margin-bottom:8px">
+          <button class="btn ${Store.deck.chrome?.on ? 'on' : ''}" data-deckchrome-on>${Store.deck.chrome?.on ? 'Footer on' : 'Footer off'}</button>
+        </div>
+        <div class="field stack"><label>Left</label>
+          <input class="inp" data-deckchrome="left" value="${Render.esc(Store.deck.chrome?.left ?? '')}"></div>
+        <div class="field stack"><label>Right</label>
+          <input class="inp" data-deckchrome="right" value="${Render.esc(Store.deck.chrome?.right ?? '')}"></div>
+        <div class="insp-sub" style="margin-top:4px">Stays perfectly still while slides change under it.</div>
+      `)}
+      ${section('Apply to every slide', `
+        <div class="btnrow" style="margin-bottom:6px">
+          <button class="btn" data-act="allTransition">This transition</button>
+          <button class="btn" data-act="allBackground">This background</button>
+        </div>
+      `)}`;
 
-      ${section('Atmosphere', `
+    return header + `
+      ${section('Background', `
+        <div class="field"><label>Colour</label>
+          <input type="color" data-slidebg value="${slide.bg && /^#/.test(slide.bg) ? slide.bg : '#000000'}">
+          <button class="btn" data-act="browseBg">Browse…</button>
+        </div>
         ${chips('Depth', 'bgPreset', slide.bgPreset || 'none',
           Object.entries(Backgrounds.PRESETS).map(([k, v]) => [k, v.name]))}
         ${chips('Motion', 'bgMotion', slide.bgMotion || 'drift',
@@ -128,39 +166,46 @@ const Inspector = (() => {
             value="${slide.bgSpeed || 1}" min=".25" max="3" step=".05">
           <span class="rangeval" style="width:34px;text-align:right;color:var(--ui-muted)">${
             (slide.bgSpeed || 1).toFixed(2)}×</span></div>
-        <div class="btnrow" style="margin-top:8px">
+        <div class="btnrow" style="margin-top:6px">
           <button class="btn ${slide.bgGrain ? 'on' : ''}" data-slidetoggle="bgGrain">Grain</button>
           <button class="btn ${slide.bgVignette ? 'on' : ''}" data-slidetoggle="bgVignette">Vignette</button>
         </div>
-        <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5;margin-top:8px">
-          The blooms drift on separate clocks so the background never visibly
-          loops. All built from the deck's accent, so they can't clash.
-        </div>
       `)}
 
-      ${section('Background colour', `
-        <div class="field"><label>Override</label>
-          <input type="color" data-slidebg value="${slide.bg && /^#/.test(slide.bg) ? slide.bg : '#0a0a0c'}">
-          <button class="btn" data-act="clearBg">Use theme</button>
+      ${section('Transition in', `
+        ${chips('', 'transition', slide.transition,
+          Motion.TRANSITIONS.map(([k, label]) => [k, label]))}
+        <div class="insp-sub" style="margin-top:6px">How this slide arrives. Flow and Magic Move
+          carry matching elements across.</div>
+      `)}
+
+      ${section('Stage sculpture', `
+        ${chips('Where', 'formPose', slide.form?.pose || 'off',
+          Object.entries(ConnectForm.POSES).map(([k, v]) => [k, v.name]))}
+        ${chips('Shape', 'formSpecies', slide.form?.species || 'twist',
+          Object.entries(ConnectForm.SPECIES).map(([k, v]) => [k, v.name]))}
+        ${chips('Light', 'formScheme', slide.form?.scheme || 'connect',
+          Object.entries(ConnectForm.SCHEMES).map(([k, v]) => [k, v.name]))}
+        <div class="insp-sub" style="margin-top:4px">One form for the whole talk: it glides and
+          re-forms between slides. For forms that stay put, add a Sculpture element.</div>
+      `)}
+
+      ${section('Footer on this slide', `
+        <div class="btnrow">
+          <button class="btn ${slide.chrome !== false ? 'on' : ''}" data-slideset="chrome" data-v="${slide.chrome === false}">${slide.chrome !== false ? 'Shown' : 'Hidden'}</button>
         </div>
+        ${chips('Ink', 'chromeTone', slide.chromeTone || 'auto', [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']])}
       `)}
 
       ${section('Slide', `
         <div class="btnrow" style="margin-bottom:6px">
           <button class="btn" data-act="dupSlide">${'${icon:copy}'} Duplicate</button>
-          <button class="btn danger" data-act="delSlide">${'${icon:trash}'}</button>
+          <button class="btn danger" data-act="delSlide">${'${icon:trash}'} Delete</button>
         </div>
         <div class="btnrow">
-          <button class="btn" data-act="slideUp">${'${icon:up}'} Move up</button>
-          <button class="btn" data-act="slideDown">${'${icon:down}'} Down</button>
+          <button class="btn" data-act="slideUp">← Earlier</button>
+          <button class="btn" data-act="slideDown">Later →</button>
         </div>
-      `)}
-
-      ${section('Deck', `
-        ${select('Theme', 'deckTheme', Store.deck.theme,
-          Object.entries(THEMES).map(([k, t]) => [k, t.name]))}
-        <div class="field"><label>Slides</label>
-          <span style="color:var(--ui-muted)">${Store.deck.slides.length}</span></div>
       `)}
     `;
   }
@@ -170,37 +215,86 @@ const Inspector = (() => {
   function elementPanel(els) {
     const e = els[0];
     const many = els.length > 1;
-    const mixed = (key) => many && els.some(x => x[key] !== e[key]);
+    const title = many ? `${els.length} elements` : (TYPE_NAMES[e.type] || e.type);
+    const header = head(title, '', 'el', [['design', 'Design'], ['motion', 'Motion'], ['position', 'Position']]);
 
-    let out = section(many ? `${els.length} elements` : e.type, `
-      <div class="grid2">
-        ${num('X', 'x', e.x)}${num('Y', 'y', e.y)}
-      </div>
-      <div class="grid2">
-        ${num('W', 'w', e.w, { min: 8 })}${num('H', 'h', e.h, { min: 8 })}
-      </div>
-      ${num('Rotation', 'rot', e.rot, { min: -360, max: 360 })}
-      ${range('Opacity', 'opacity', e.opacity, 0, 1, .01)}
-    `);
+    if (tabs.el === 'motion') {
+      const art = KIT_TYPES.has(e.type);
+      return header + section('Entrance', `
+        <div data-chips="anim">
+          ${Motion.ENTRANCES.map(g => `
+            <div class="insp-sub">${g.group}</div>
+            <div class="chiprow" style="margin-bottom:7px">
+              ${g.items.filter(([v]) => v !== 'build' || art).map(([v, label]) =>
+                `<button class="chip ${(e.anim || 'rise') === v ? 'on' : ''}" data-val="${v}">${label}</button>`
+              ).join('')}
+            </div>`).join('')}
+        </div>
+        ${chips('Speed', 'animSpeed', e.animSpeed || 'normal',
+          Motion.SPEEDS.map(([k, label]) => [k, label]))}
+        <div class="insp-sub" style="margin-top:2px">
+          ${art ? 'Signature build plays this element\'s own animation — drawing on, filling in, rising.' :
+                  'With the Flow transition, order is automatic: headline first, then copy, then media.'}
+        </div>
+        <div class="btnrow" style="margin-top:8px"><button class="btn" data-act="preview">${'${icon:play}'} Preview slide</button></div>
+      `) + section('While on screen', `
+        ${chips('Loop', 'emphasis', e.emphasis || 'none',
+          Motion.EMPHASIS.map(([k, label]) => [k, label]))}
+      `) + section('Reveal', `
+        <div class="field"><label>Appears</label>
+          <select class="inp" data-key="build">
+            ${[0, 1, 2, 3, 4, 5].map(n =>
+              `<option value="${n}"${n === e.build ? ' selected' : ''}>${
+                n === 0 ? 'With the slide' : `On click ${n}`}</option>`).join('')}
+          </select></div>
+      `) + section('Travel between slides', `
+        <div class="field stack"><label>Morph tag</label>
+          <input class="inp" data-key="link" value="${Render.esc(e.link || '')}" placeholder="e.g. hero-title"></div>
+        <div class="insp-sub" style="margin-top:2px">
+          Same tag on the next slide and it glides there instead of being replaced.
+          Identical text, images and shapes pair up on their own.
+        </div>
+      `);
+    }
 
-    out += section('Align', `
-      <div class="grid3" style="margin-bottom:6px">
-        <button class="btn" data-align="left">Left</button>
-        <button class="btn" data-align="hcent">Center</button>
-        <button class="btn" data-align="right">Right</button>
-      </div>
-      <div class="grid3" style="margin-bottom:6px">
-        <button class="btn" data-align="top">Top</button>
-        <button class="btn" data-align="vcent">Middle</button>
-        <button class="btn" data-align="bottom">Bottom</button>
-      </div>
-      ${many ? `<div class="grid2">
-        <button class="btn" data-dist="h">Distribute ⇢</button>
-        <button class="btn" data-dist="v">Distribute ⇡</button>
-      </div>` : ''}
-    `);
+    if (tabs.el === 'position') {
+      return header + section('Size and place', `
+        <div class="grid2">${num('X', 'x', e.x)}${num('Y', 'y', e.y)}</div>
+        <div class="grid2">${num('W', 'w', e.w, { min: 8 })}${num('H', 'h', e.h, { min: 8 })}</div>
+        ${num('Rotation', 'rot', e.rot, { min: -360, max: 360 })}
+        ${range('Opacity', 'opacity', e.opacity, 0, 1, .01)}
+      `) + section('Align to slide', `
+        <div class="grid3" style="margin-bottom:6px">
+          <button class="btn" data-align="left">Left</button>
+          <button class="btn" data-align="hcent">Centre</button>
+          <button class="btn" data-align="right">Right</button>
+        </div>
+        <div class="grid3">
+          <button class="btn" data-align="top">Top</button>
+          <button class="btn" data-align="vcent">Middle</button>
+          <button class="btn" data-align="bottom">Bottom</button>
+        </div>
+        ${many ? `<div class="grid2" style="margin-top:6px">
+          <button class="btn" data-dist="h">Distribute ⇢</button>
+          <button class="btn" data-dist="v">Distribute ⇡</button>
+        </div>` : ''}
+      `) + section('Layer', `
+        <div class="grid4" style="margin-bottom:8px">
+          <button class="btn" data-order="back"  title="Send to back">⤓</button>
+          <button class="btn" data-order="bwd"   title="Send backward">↓</button>
+          <button class="btn" data-order="fwd"   title="Bring forward">↑</button>
+          <button class="btn" data-order="front" title="Bring to front">⤒</button>
+        </div>
+        <div class="btnrow">
+          <button class="btn" data-act="dupEl">${'${icon:copy}'} Duplicate</button>
+          <button class="btn" data-act="lockEl">${'${icon:lock}'} ${e.locked ? 'Unlock' : 'Lock'}</button>
+          <button class="btn danger" data-act="delEl">${'${icon:trash}'}</button>
+        </div>
+      `);
+    }
 
-    /* type-specific */
+    /* design */
+    let out = header;
     if (e.type === 'text' && !many) out += textSection(e);
     if (e.type === 'shape')         out += shapeSection(e);
     if (e.type === 'image' && !many) out += imageSection(e);
@@ -208,80 +302,90 @@ const Inspector = (() => {
     if (e.type === 'chart' && !many) out += chartSection(e);
     if (e.type === 'table' && !many) out += tableSection(e);
     if (e.type === 'mockup' && !many) out += mockupSection(e);
-
+    if (e.type === 'icon' && !many) out += iconSection(e);
+    if (KIT_TYPES.has(e.type) && !many) out += KIT_SECTIONS[e.type](e);
     out += section('Effects', `
       ${chips('Shadow', 'shadow', e.shadow,
         [['none', 'None'], ['soft', 'Soft'], ['lifted', 'Lifted'],
-         ['dramatic', 'Dramatic'], ['glow', 'Glow']])}
+         ['dramatic', 'Dramatic'], ['glow', 'Glow'], ['rim', 'Rim light']])}
     `);
-
-    out += section('Entrance', `
-      <div data-chips="anim">
-        ${Motion.ENTRANCES.map(g => `
-          <div class="insp-sub">${g.group}</div>
-          <div class="chiprow" style="margin-bottom:7px">
-            ${g.items.map(([v, label]) =>
-              `<button class="chip ${(e.anim || 'rise') === v ? 'on' : ''}" data-val="${v}">${label}</button>`
-            ).join('')}
-          </div>`).join('')}
-      </div>
-      ${chips('Speed', 'animSpeed', e.animSpeed || 'normal',
-        Motion.SPEEDS.map(([k, label]) => [k, label]))}
-      <div class="insp-sub" style="margin-top:2px">
-        Elements arrive in stacking order with a stagger. Set Build order below
-        to hold one back until you click.
-      </div>
-    `);
-
-    out += section('Emphasis', `
-      ${chips('Loop', 'emphasis', e.emphasis || 'none',
-        Motion.EMPHASIS.map(([k, label]) => [k, label]))}
-      <div class="insp-sub" style="margin-top:2px">
-        Runs continuously while the slide is shown. Deliberately subtle — pick
-        one hero element, not the whole slide.
-      </div>
-    `);
-
-    out += section('Magic Move', `
-      <div class="field stack"><label>Morph tag</label>
-        <input class="inp" data-key="link" value="${Render.esc(e.link || '')}"
-          placeholder="e.g. hero-title">
-      </div>
-      <div class="insp-sub" style="margin-top:2px">
-        Give the same tag to an element on the next slide and it will travel
-        between them instead of being replaced. Matching text, images and
-        shapes are paired automatically — a tag is only needed to override that.
-      </div>
-    `);
-
-    out += section('Build order', `
-      <div class="field"><label>Reveal at</label>
-        <select class="inp" data-key="build">
-          ${[0, 1, 2, 3, 4, 5].map(n =>
-            `<option value="${n}"${n === e.build ? ' selected' : ''}>${
-              n === 0 ? 'With slide' : `Click ${n}`}</option>`).join('')}
-        </select></div>
-      <div style="color:var(--ui-muted);font-size:11.5px;line-height:1.5">
-        Elements set to a click number stay hidden until you advance during the talk.
-      </div>
-    `);
-
-    out += section('Arrange', `
-      <div class="grid4" style="margin-bottom:8px">
-        <button class="btn" data-order="back"  title="Send to back">⤓</button>
-        <button class="btn" data-order="bwd"   title="Send backward">↓</button>
-        <button class="btn" data-order="fwd"   title="Bring forward">↑</button>
-        <button class="btn" data-order="front" title="Bring to front">⤒</button>
-      </div>
-      <div class="btnrow">
-        <button class="btn" data-act="dupEl">${'${icon:copy}'} Duplicate</button>
-        <button class="btn" data-act="lockEl">${'${icon:lock}'} ${e.locked ? 'Unlock' : 'Lock'}</button>
-        <button class="btn danger" data-act="delEl">${'${icon:trash}'}</button>
-      </div>
-    `);
-
     return out;
   }
+
+  /* ---------- kit sections ---------- */
+
+  const KIT_TYPES = new Set(['sculpture', 'lens', 'wires', 'bands', 'halftone']);
+  const lightChips = (e) => chips('Light', 'scheme', e.scheme || 'connect',
+    Object.entries(ConnectForm.SCHEMES).map(([k, v]) => [k, v.name]));
+  const toggle = (key, on, label) => `<button class="btn ${on ? 'on' : ''}" data-toggle="${key}">${label}</button>`;
+
+  const KIT_SECTIONS = {
+    sculpture: (e) => section('Sculpture', `
+      ${chips('Shape', 'species', e.species || 'twist',
+        Object.entries(ConnectForm.SPECIES).map(([k, v]) => [k, v.name]))}
+      ${lightChips(e)}
+      ${range('Size', 'scale', e.scale ?? .9, .2, 1.4, .01)}
+      ${range('Angle', 'roll', e.roll ?? 0, -180, 180, 1)}
+      ${range('Turn', 'turn', e.turn ?? 0, 0, 6.28, .01)}
+      ${range('Twist', 'twist', e.twist ?? ConnectForm.SPECIES[e.species || 'twist'].tw, 0, 5, .05)}
+      ${range('Spin', 'speed', e.speed ?? 1, 0, 3, .05)}
+      <div class="btnrow">${toggle('halo', e.halo !== false, 'Glow')}</div>
+      <div class="insp-sub" style="margin-top:6px">Live 3D while presenting; a still here.</div>
+    `),
+    lens: (e) => section('Lens field', `
+      ${chips('Shape', 'shape', e.shape || 'leaf',
+        [['leaf', 'Leaf'], ['ellipse', 'Ellipse'], ['drop', 'Drop'], ['petal', 'Petal']])}
+      ${chips('Arrange', 'arrange', e.arrange || 'row',
+        [['row', 'Row'], ['grid', 'Grid'], ['fan', 'Fan'], ['cluster', 'Cluster']])}
+      ${chips('Fill', 'fill', e.fill || 'mixed',
+        [['mixed', 'Wire → solid'], ['wire', 'Wire'], ['lines', 'Lines'], ['solid', 'Solid']])}
+      ${lightChips(e)}
+      ${range('Count', 'count', e.count ?? 7, 1, 30, 1)}
+      ${range('Contours', 'contours', e.contours ?? 11, 2, 28, 1)}
+      ${range('Width', 'fat', e.fat ?? .38, .12, 1, .01)}
+      ${range('Gap', 'gap', e.gap ?? .12, 0, .7, .01)}
+      ${range('Tilt', 'tilt', e.tilt ?? 0, -90, 90, 1)}
+      ${range('Spread', 'spread', e.spread ?? 1, .2, 1.6, .01)}
+      ${range('Line', 'weight', e.weight ?? 1.6, .4, 5, .1)}
+    `),
+    wires: (e) => section('Wire lines', `
+      ${chips('Curve', 'curve', e.curve || 'sweep',
+        [['sweep', 'Sweep'], ['wave', 'Wave'], ['arc', 'Arc'], ['rise', 'Rise'],
+         ['helix', 'Helix'], ['burst', 'Burst'], ['rings', 'Rings']])}
+      ${chips('Line', 'dot', e.dot || 'dots', [['dots', 'Dots'], ['dashes', 'Dashes'], ['line', 'Solid']])}
+      ${chips('Colour', 'color', e.color || 'iris',
+        [['iris', 'Iridescent'], ['white', 'White'], ['cyan', 'Cyan'], ['violet', 'Violet'], ['blue', 'Blue'], ['ink', 'Ink']])}
+      ${(e.color || 'iris') === 'iris' ? lightChips(e) : ''}
+      ${range('Count', 'count', e.count ?? 9, 1, 40, 1)}
+      ${range('Spread', 'spread', e.spread ?? 1, .1, 4, .05)}
+      ${range('Weight', 'weight', e.weight ?? 2.6, .5, 8, .1)}
+      ${range('Spacing', 'gap', e.gap ?? 13, 4, 48, 1)}
+      ${range('Opacity', 'alpha', e.alpha ?? 1, .05, 1, .01)}
+      <div class="btnrow">${toggle('flow', e.flow !== false, 'Keep moving')}</div>
+    `),
+    bands: (e) => section('Bands', `
+      ${lightChips(e)}
+      ${range('Count', 'count', e.count ?? 9, 1, 40, 1)}
+      ${range('Angle', 'angle', e.angle ?? 0, -90, 90, 1)}
+      ${range('Variety', 'variance', e.variance ?? .6, 0, 1.5, .01)}
+      ${range('Gap', 'gap', e.gap ?? 0, 0, 48, 1)}
+      ${range('Corners', 'radius', e.radius ?? 0, 0, 120, 1)}
+      ${range('Shuffle', 'seed', e.seed ?? 3, 1, 60, 1)}
+      <div class="btnrow">${toggle('lines', !!e.lines, 'Fine lines')}${toggle('depth', e.depth !== false, 'Dark bars')}</div>
+    `),
+    halftone: (e) => section('Dot field', `
+      ${chips('Pattern', 'pattern', e.pattern || 'radial', [['radial', 'Radial'], ['linear', 'Linear'], ['wave', 'Wave']])}
+      ${chips('Colour', 'color', e.color || 'iris',
+        [['iris', 'Iridescent'], ['white', 'White'], ['cyan', 'Cyan'], ['violet', 'Violet'], ['ink', 'Ink']])}
+      ${(e.color || 'iris') === 'iris' ? lightChips(e) : ''}
+      ${range('Density', 'density', e.density ?? 34, 6, 80, 1)}
+      ${range('Dot size', 'size', e.size ?? .92, .2, 1, .01)}
+      ${range('Falloff', 'falloff', e.falloff ?? 1.2, .3, 3, .05)}
+      ${(e.pattern || 'radial') === 'radial' ? range('Centre X', 'cx', e.cx ?? .5, 0, 1, .01) + range('Centre Y', 'cy', e.cy ?? .5, 0, 1, .01) : ''}
+      ${range('Opacity', 'alpha', e.alpha ?? 1, .05, 1, .01)}
+      <div class="btnrow">${toggle('invert', !!e.invert, 'Invert')}</div>
+    `),
+  };
 
   /* ---------- type sections ---------- */
 
@@ -313,7 +417,9 @@ const Inspector = (() => {
     <div class="fin-grid" data-chips="finish">
       ${[['none', 'Plain'], ['gradient', 'Gradient'], ['gloss', 'Gloss'], ['chrome', 'Chrome'],
          ['liquidglass', 'Liquid glass'], ['liquid', 'Liquid'], ['shimmer', 'Shimmer'],
-         ['frost', 'Frost'], ['emboss', 'Emboss'], ['outline', 'Outline']].map(([v, label]) =>
+         ['frost', 'Frost'], ['emboss', 'Emboss'], ['outline', 'Outline'],
+         ['connect', 'Iridescent'], ['stripes', 'Striped'], ['dissolve', 'Dissolve'],
+         ['mist', 'Mist']].map(([v, label]) =>
         `<button class="chip fin ${(e.finish || 'none') === v ? 'on' : ''}" data-val="${v}">
            <span class="fin-prev finish-${v}">Ag</span><em>${label}</em></button>`).join('')}
     </div>
@@ -412,6 +518,20 @@ const Inspector = (() => {
     </div>
   `);
 
+  const iconSection = (e) => section('Icon', `
+    <div class="chiprow icon-pick" data-chips="glyph">
+      ${Object.keys(Connect.ICONS).map(k =>
+        `<button class="chip ${e.glyph === k ? 'on' : ''}" data-val="${k}" title="${k}">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${Connect.ICONS[k]}"/></svg>
+        </button>`).join('')}
+    </div>
+    ${chips('Colour', 'tone', e.tone || 'iris',
+      [['iris', 'Iridescent'], ['accent', 'Accent'], ['light', 'White'], ['dark', 'Ink']])}
+    ${chips('Tile', 'tile', e.tile || 'none', [['none', 'None'], ['dark', 'Dark'], ['light', 'Light']])}
+    ${range('Stroke', 'weight', e.weight ?? 1.7, 1, 3, .1)}
+  `);
+
   const mockupSection = (e) => section('Device', `
     ${chips('Frame', 'kind', e.kind,
       [['browser', 'Browser'], ['window', 'Window'], ['phone', 'Phone']])}
@@ -483,6 +603,11 @@ const Inspector = (() => {
       });
     });
 
+    root.querySelectorAll('[data-tabs] [data-tab]').forEach(b => b.addEventListener('click', () => {
+      tabs[b.parentElement.dataset.tabs] = b.dataset.tab;
+      render();
+    }));
+
     // chip rows — also used for slide transition
     root.querySelectorAll('[data-chips]').forEach(box => {
       box.addEventListener('click', (ev) => {
@@ -490,7 +615,15 @@ const Inspector = (() => {
         if (!b) return;
         const key = box.dataset.chips;
         // Slide-level properties live on the slide, not the selected element.
-        if (['transition', 'bgPreset', 'bgMotion'].includes(key)) {
+        if (key === 'formPose' || key === 'formScheme' || key === 'formSpecies') {
+          Store.commit(() => {
+            const s = Store.currentSlide();
+            s.form = { pose: 'off', scheme: 'connect', ...(s.form || {}) };
+            const k = { formPose: 'pose', formScheme: 'scheme', formSpecies: 'species' }[key];
+            s.form[k] = b.dataset.val;
+            if (k !== 'pose' && s.form.pose === 'off') s.form.pose = 'right';
+          });
+        } else if (['transition', 'bgPreset', 'bgMotion', 'chromeTone'].includes(key)) {
           Store.commit(() => { Store.currentSlide()[key] = b.dataset.val; });
         } else {
           upd({ [key]: b.dataset.val });
@@ -535,6 +668,27 @@ const Inspector = (() => {
     });
 
     // slide-level booleans (grain, vignette)
+    root.querySelectorAll('[data-slideset]').forEach(b => {
+      b.addEventListener('click', () => {
+        const key = b.dataset.slideset;
+        let v = b.dataset.v;
+        if (v === 'true' || v === 'false') v = v === 'true';
+        Store.commit(() => { Store.currentSlide()[key] = v; });
+      });
+    });
+
+    root.querySelector('[data-deckchrome-on]')?.addEventListener('click', () => {
+      Store.commit(d => { d.chrome = { left: 'APEX', right: '', ...(d.chrome || {}), on: !d.chrome?.on }; });
+    });
+    root.querySelectorAll('[data-deckchrome]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        Store.commit(d => {
+          d.chrome = { on: true, left: '', right: '', ...(d.chrome || {}) };
+          d.chrome[inp.dataset.deckchrome] = inp.value;
+        }, { tag: 'deck-chrome-' + inp.dataset.deckchrome });
+      });
+    });
+
     root.querySelectorAll('[data-slidetoggle]').forEach(b => {
       b.addEventListener('click', () => {
         const key = b.dataset.slidetoggle;
@@ -596,6 +750,22 @@ const Inspector = (() => {
       delEl:     () => Canvas.deleteSelected(),
       lockEl:    () => { const cur = Store.selectedElements()[0]?.locked; Canvas.updateSelected({ locked: !cur }); },
       pickImage: () => App.pickImage(),
+      preview:   () => App.preview(),
+      browseBg:  () => Library.open('backgrounds'),
+      themeSheet: () => App.showThemes(),
+      allTransition: () => {
+        const t = Store.currentSlide().transition;
+        Store.commit(d => d.slides.forEach(s => { s.transition = t; }));
+        App.toast('Every slide now uses this transition');
+      },
+      allBackground: () => {
+        const c = Store.currentSlide();
+        Store.commit(d => d.slides.forEach(s => {
+          s.bg = c.bg; s.bgPreset = c.bgPreset; s.bgMotion = c.bgMotion; s.bgSpeed = c.bgSpeed;
+          s.bgGrain = c.bgGrain; s.bgVignette = c.bgVignette;
+        }));
+        App.toast('Every slide now uses this background');
+      },
     };
     root.querySelectorAll('[data-act]').forEach(b =>
       b.addEventListener('click', () => acts[b.dataset.act]?.()));

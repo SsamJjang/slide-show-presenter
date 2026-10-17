@@ -103,7 +103,9 @@ const Rail = (() => {
     Store.commit(() => {
       const s = Store.currentSlide();
       s.elements = layout.build();
-      Object.assign(s, layout.slide || {});
+      // Reset the slide-level look first, so a layout that doesn't set a
+      // background colour doesn't inherit the black of a product slide.
+      Object.assign(s, { bg: null, chrome: true, chromeTone: 'auto', form: null }, layout.slide || {});
     });
     Store.select([]);
   }

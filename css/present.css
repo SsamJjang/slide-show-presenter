@@ -35,7 +35,18 @@
 .present-stage .slide > .slide-bg,
 .present-stage .slide > .slide-bg-overlay,
 .present-stage .slide > .slide-grain,
-.present-stage .slide > .slide-vignette { display: none; }
+.present-stage .slide > .slide-vignette,
+.present-stage .slide > .slide-form { display: none; }
+
+/* The live Connect form: one canvas over the slide's box for the whole talk,
+   between the field and the content, so it glides under every transition. */
+.present-form { position: absolute; z-index: 0; pointer-events: none; }
+
+/* The footer is hoisted too: one still copy above the stage for the whole
+   talk instead of one per slide riding along with every transition. */
+.present-stage .slide > .slide-chrome { display: none; }
+.present-chrome { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.present-chrome .slide-host { position: absolute; top: 0; left: 0; }
 .present-stage { z-index: 1; }
 
 /* Elements travelling between slides sit above the ones that are leaving. */
@@ -77,7 +88,7 @@
     rgba(0,0,0,.24) 54%, rgba(0,0,0,.11) 72%, rgba(0,0,0,.03) 88%,
     rgba(0,0,0,0) 100%);
   color: rgba(255,255,255,.72);
-  font: 500 12.5px/1 'Inter', system-ui, sans-serif;
+  font: 500 12.5px/1 'Optimistic Text', 'Inter', 'Segoe UI Variable Text', system-ui, sans-serif;
   opacity: 0; transition: opacity .25s; pointer-events: none;
 }
 .present-root.hud-on .present-hud { opacity: 1; }
@@ -86,7 +97,8 @@
 .present-root :focus, .present-root :focus-visible { outline: none !important; }
 
 .hud-progress { height: 3px; background: rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
-.hud-progress i { display: block; height: 100%; background: #fff; border-radius: 2px; transition: width .3s ease; }
+.hud-progress i { display: block; height: 100%; border-radius: 2px; transition: width .45s cubic-bezier(.2,.8,.2,1);
+  background: linear-gradient(90deg, #63d2ff, #2f6bff 55%, #ff6bd6); }
 .hud-row { display: flex; align-items: center; gap: 18px; }
 .hud-row #hudTimer { font-variant-numeric: tabular-nums; }
 .hud-hint { margin-left: auto; opacity: .55; }

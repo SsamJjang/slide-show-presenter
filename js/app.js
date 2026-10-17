@@ -54,7 +54,8 @@ const App = (() => {
 
     // Live-render a real preview of each layout in the current theme.
     sheetPanel.querySelectorAll('[data-prev]').forEach(box => {
-      const slide = makeSlide({ elements: LAYOUTS[box.dataset.prev].build() });
+      const l = LAYOUTS[box.dataset.prev];
+      const slide = makeSlide({ ...(l.slide || {}), elements: l.build() });
       applyTheme(box, Store.deck.theme, Store.deck);
       const w = box.clientWidth || 190;
       box.appendChild(Render.slideNode(slide, Store.deck, { scale: w / DESIGN_W }));
@@ -257,24 +258,80 @@ const App = (() => {
   const ACTIONS = {
     undo: () => { if (!Store.undo()) toast('Nothing to undo'); },
     redo: () => { if (!Store.redo()) toast('Nothing to redo'); },
-    present: () => Present.start(0),
-    layouts: showLayouts,
+    // The button presents from the slide you are looking at; Ctrl+Enter is
+    // the "from the top" shortcut.
+    present: () => Present.start(Store.sel.slide),
+    layouts: () => Library.open('layouts'),
     theme: showThemes,
     export: showExport,
     shortcuts: showShortcuts,
-    addSlide: () => Rail.addSlide('bullets'),
+    addSlide: () => newSlide(),
+    menu: () => { mainMenu.hidden = !mainMenu.hidden; },
+    closeDrawer: () => Library.close(),
+    preview: () => previewSlide(),
+    /* Swap the open deck for the APEX Connect keynote. A commit rather than a
+       load, so Ctrl+Z brings the previous deck straight back. */
+    connectDeck: () => {
+      const fresh = connectDeck();
+      Store.commit(d => { Object.keys(d).forEach(k => delete d[k]); Object.assign(d, fresh); });
+      Store.gotoSlide(0);
+      applyTheme(document.getElementById('canvas'), Store.deck.theme, Store.deck);
+      toast('Loaded the APEX Connect deck — Ctrl+Z to undo');
+    },
     zoomIn:  () => Canvas.zoomBy(1.2),
     zoomOut: () => Canvas.zoomBy(1 / 1.2),
     zoomFit: () => Canvas.zoomFit(),
     toggleNotes: () => { notesDrawer.hidden = !notesDrawer.hidden; Canvas.zoomFit(); },
+    newSlide: () => newSlide(),
   };
 
+  const mainMenu = document.getElementById('mainMenu');
   document.querySelector('.topbar').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act], [data-insert]');
     if (!b) return;
+    if (b.dataset.act !== 'menu') mainMenu.hidden = true;
     if (b.dataset.act) ACTIONS[b.dataset.act]?.();
     if (b.dataset.insert) insert(b.dataset.insert);
   });
+  document.addEventListener('pointerdown', (e) => {
+    if (!mainMenu.hidden && !e.target.closest('.menu-wrap')) mainMenu.hidden = true;
+  });
+  document.getElementById('drawer').addEventListener('click', (e) => {
+    const b = e.target.closest('.drawer-head [data-act]');
+    if (b) ACTIONS[b.dataset.act]?.();
+  });
+
+  /* A new slide starts empty but keeps the look of the one you're on — same
+     field, same transition — so building a deck slide by slide stays
+     consistent without a template. */
+  function newSlide() {
+    const cur = Store.currentSlide();
+    const slide = makeSlide({
+      bg: cur?.bg ?? null, bgPreset: cur?.bgPreset || 'none', bgMotion: cur?.bgMotion || 'drift',
+      transition: cur?.transition || 'flow', chromeTone: cur?.chromeTone || 'auto',
+      form: cur?.form ? { ...cur.form } : null, elements: [],
+    });
+    const at = Store.sel.slide + 1;
+    Store.commit(d => d.slides.splice(at, 0, slide));
+    Store.gotoSlide(at);
+  }
+
+  /* Play the current slide's entrance right on the canvas, exactly as it
+     will run on stage — choreography, element builds, live sculptures — then
+     hand the canvas back for editing. */
+  let previewing = null;
+  function previewSlide() {
+    if (previewing) return;
+    Store.select([]);
+    Canvas.render();
+    const host = document.querySelector('#canvas .slide-host');
+    if (!host) return;
+    const release = connectLiven(host, ConnectForm, { intro: true });
+    const fl = connectFlow(null, host, { delay: 120 });
+    previewing = setTimeout(() => {
+      release(); previewing = null; Canvas.render();
+    }, Math.max(fl.duration, 2200) + 900);
+  }
 
   document.querySelector('.stage-bar').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
@@ -295,6 +352,7 @@ const App = (() => {
       code:  { w: 1200, h: 500 },
       table: { w: 1200, h: 400 },
       mockup:{ w: 1100, h: 700, shadow: 'dramatic' },
+      icon:  { w: 120, h: 120, x: 900, y: 480 },
     };
     Canvas.addElement(type, presets[type] || {});
   }
@@ -323,9 +381,9 @@ const App = (() => {
         z: () => e.shiftKey ? Store.redo() : Store.undo(),
         y: () => Store.redo(),
         d: () => e.shiftKey ? Rail.duplicateSlide() : Canvas.duplicateSelected(),
-        m: () => Rail.addSlide('bullets'),
+        m: () => newSlide(),
         a: () => Store.select((Store.currentSlide()?.elements || []).map(el => el.id)),
-        l: showLayouts,
+        l: () => Library.open('layouts'),
         k: showThemes,
         e: showExport,
         s: () => { Persist.save(Store.deck); toast('Saved'); },
@@ -421,6 +479,7 @@ const App = (() => {
     Canvas.render();
     Rail.render();
     Inspector.render();
+    Library.refresh();
     syncChrome();
     scheduleSave();
   });
@@ -439,6 +498,7 @@ const App = (() => {
     Canvas.render();
     Rail.render();
     Inspector.render();
+    Library.render();
     syncChrome();
 
     if (saved) toast(`Recovered "${saved.title}" — ${saved.slides.length} slides`);
@@ -447,7 +507,8 @@ const App = (() => {
     window.addEventListener('beforeunload', () => Persist.save(Store.deck));
   }
 
-  return { toast, boot, pickImage, showLayouts, showThemes, showExport, showShortcuts, closeSheet };
+  return { toast, boot, pickImage, showLayouts, showThemes, showExport, showShortcuts, closeSheet,
+           preview: () => previewSlide() };
 })();
 
 document.addEventListener('DOMContentLoaded', App.boot);

@@ -23,6 +23,51 @@ const Present = (() => {
   let tick = null;
   let hudTimeout = null;
   let pv = null;                // presenter view window
+  let form = null;              // live Connect form controller
+
+  /* The persistent footer. One copy for the whole talk, above the stage, so
+     it holds perfectly still while slides change underneath — the per-slide
+     copies are hidden in presentation (see present.css). */
+  const chromeHost = document.createElement('div');
+  chromeHost.className = 'present-chrome';
+  root.appendChild(chromeHost);
+
+  /* The live form canvas, sized to the slide's own 16:9 box so a pose lands
+     exactly where the editor's snapshot shows it. Sits above the field and
+     below the stage. */
+  let formCanvas = document.createElement('canvas');
+  formCanvas.className = 'present-form';
+  root.insertBefore(formCanvas, stage);
+  /* A canvas whose WebGL context was released hands back that same dead
+     context forever — re-mounting on it painted a white box with a broken
+     glyph over every slide of the second talk. Each talk gets a new one. */
+  function freshFormCanvas() {
+    const c = document.createElement('canvas');
+    c.className = 'present-form';
+    formCanvas.replaceWith(c);
+    formCanvas = c;
+  }
+  function placeForm(s) {
+    formCanvas.style.width = DESIGN_W * s + 'px';
+    formCanvas.style.height = DESIGN_H * s + 'px';
+    formCanvas.style.left = ((window.innerWidth - DESIGN_W * s) / 2) + 'px';
+    formCanvas.style.top = ((window.innerHeight - DESIGN_H * s) / 2) + 'px';
+    form?.resize();
+  }
+
+  /* Live sculptures. Each slide's .e-sculpture pictures are swapped for live
+     WebGL forms when the slide goes on stage, and their contexts are released
+     the moment it leaves — browsers allow only a handful at once. */
+  const livers = new WeakMap();
+  function liven(node, intro) {
+    if (!node.querySelector('.e-sculpture')) return;
+    livers.set(node, connectLiven(node, ConnectForm, { intro }));
+  }
+  function retire(node) {
+    const release = livers.get(node);
+    if (release) { release(); livers.delete(node); }
+    node.remove();
+  }
 
   const slides = () => Store.deck.slides;
   const scaleFor = () => Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
@@ -38,7 +83,13 @@ const Present = (() => {
 
     root.hidden = false;
     applyTheme(root, Store.deck.theme, Store.deck);
+    freshFormCanvas();
+    placeForm(scaleFor());
+    form = ConnectForm.mount(formCanvas);
+    form.set(slides()[index]?.form, true);
     show(index, null);
+    // Fullscreen arriving resizes the window mid-entrance; refit (never
+    // rebuild) handles that, so the opening slide plays through untouched.
     startTimer();
 
     try { await document.documentElement.requestFullscreen?.(); }
@@ -51,8 +102,12 @@ const Present = (() => {
     if (!active) return;
     active = false;
     root.hidden = true;
+    stage.querySelectorAll('.slide-host').forEach(retire);
     stage.innerHTML = '';
     atmos.innerHTML = '';
+    chromeHost.innerHTML = '';
+    delete chromeHost.dataset.html;
+    form?.destroy(); form = null;
     delete atmos.dataset.atmos;
     blank.hidden = true;
     clearInterval(tick);
@@ -77,12 +132,33 @@ const Present = (() => {
   const HOST_MOVES = new Set(['slide', 'push', 'zoom', 'zoomOut',
                               'cover', 'reveal', 'flip', 'swipeUp', 'glitch']);
 
+  /* Place and fill the footer layer to match the slide host exactly. Only
+     rebuilt when the deck's footer text changes; per-slide visibility and
+     tone are class toggles, so the footer cross-fades instead of popping. */
+  function syncChrome(slide, s) {
+    const deck = Store.deck;
+    const html = Connect.chromeHTML(deck, null);
+    if (chromeHost.dataset.html !== html) {
+      chromeHost.dataset.html = html;
+      chromeHost.innerHTML = html
+        ? `<div class="slide-host"><div class="slide" style="background:transparent">${html}</div></div>` : '';
+    }
+    const host = chromeHost.firstElementChild;
+    if (!host) return;
+    host.style.transform = `scale(${s})`;
+    host.style.left = ((window.innerWidth - DESIGN_W * s) / 2) + 'px';
+    host.style.top  = ((window.innerHeight - DESIGN_H * s) / 2) + 'px';
+    const bar = host.querySelector('.slide-chrome');
+    bar.classList.toggle('tone-dark', Connect.chromeDark(slide));
+    bar.style.opacity = slide.chrome === false ? '0' : '1';
+  }
+
   function show(i, transition, { fromIndex = null, animate = true } = {}) {
     const slide = slides()[i];
     if (!slide) return;
 
     const s = scaleFor();
-    const node = Render.slideNode(slide, Store.deck, { scale: s, build: step });
+    const node = Render.slideNode(slide, Store.deck, { scale: s, build: step, noForm: true });
     node.style.setProperty('--s', s);
     node.style.left = ((window.innerWidth - DESIGN_W * s) / 2) + 'px';
     node.style.top  = ((window.innerHeight - DESIGN_H * s) / 2) + 'px';
@@ -92,28 +168,54 @@ const Present = (() => {
        immediately, leaving exactly one to transition out of. querySelector
        would also have returned the OLDEST host here, not the current one. */
     const existing = [...stage.querySelectorAll('.slide-host')];
-    while (existing.length > 1) existing.shift().remove();
+    while (existing.length > 1) retire(existing.shift());
     const prev = existing[0] || null;
 
     const t = transition || slide.transition || 'fade';
 
+    // The form never cuts: it springs toward this slide's pose from wherever
+    // it is, including mid-glide from a previous advance.
+    placeForm(s);
+    form?.set(slide.form, !animate && !prev);
+
     // The atmosphere is continuous across the whole talk — it cross-dissolves
     // only when the look actually changes, and never restarts its motion.
     Continuity.syncAtmosphere(atmos, slide, { immediate: !prev });
+    syncChrome(slide, s);
 
     /* --- Magic Move ---
        Only worth doing when there is a previous slide AND something on it to
        carry over. With no matches it degrades to the ordinary cross-fade,
        which is exactly what a plain transition would have done anyway. */
     const prevSlide = fromIndex != null ? slides()[fromIndex] : null;
-    const matches = (t === 'magic' && prev && prevSlide)
+    /* --- Flow ---
+       The Connect choreography: out in reverse reading order, shared
+       elements travel, in by reading order. Also used for the very first
+       slide, so starting a talk looks like the rest of it. */
+    if (t === 'flow' && animate) {
+      stage.appendChild(node);
+      liven(node, animate);
+      const fl = connectFlow(prev, node);
+      if (prev) {
+        const finish = () => retire(prev);
+        fl.done.then(finish);
+        setTimeout(finish, fl.duration + 600);
+      }
+      updateHud();
+      syncPresenter();
+      return;
+    }
+
+    const continuous = t === 'magic';
+    const matches = (continuous && prev && prevSlide)
       ? Continuity.pairs(prevSlide, slide) : [];
 
-    if (t === 'magic' && prev) {
+    if (continuous && prev) {
       stage.appendChild(node);
+      liven(node, animate);
       const move = Continuity.magicMove(prev, node, matches);
       const finish = () => {
-        prev.remove();
+        retire(prev);
         // Only settle if this host is still the live one — a faster advance
         // may already have replaced it, and settling a superseded host would
         // strip the styles the new transition is relying on.
@@ -130,16 +232,18 @@ const Present = (() => {
 
     if (prev && t !== 'none') {
       prev.classList.add('exit-' + t);
-      prev.addEventListener('animationend', () => prev.remove(), { once: true });
+      prev.addEventListener('animationend', () => retire(prev), { once: true });
       // Safety net: if the animation never fires (tab backgrounded), don't
       // leave a stale slide stacked under the new one forever.
-      setTimeout(() => prev.remove(), 700);
+      setTimeout(() => retire(prev), 700);
       node.classList.add('enter-' + t);
     } else {
-      prev?.remove();
+      if (prev) retire(prev);
     }
 
     stage.appendChild(node);
+    liven(node, animate);
+    if (animate) node.classList.add('building');
 
     // Choreographed entrance, only in presentation. Removed once it has run so
     // that later build reveals on this slide transition normally instead of
@@ -360,9 +464,23 @@ const Present = (() => {
      re-run the entrance stagger, so dragging a window edge — or a projector
      renegotiating its mode mid-talk — made the slide assemble itself again in
      front of the room. */
-  window.addEventListener('resize', () => {
-    if (active) show(index, 'none', { animate: false });
-  });
+  /* Refit in place: rescale and recentre whatever is on stage, mid-animation
+     or not. Rebuilding here is what made "Present" glitch — the click enters
+     fullscreen, fullscreen resizes the window, and the resize used to throw
+     away the slide that was halfway through its entrance. */
+  function refit() {
+    const s = scaleFor();
+    stage.querySelectorAll('.slide-host').forEach(h => {
+      h.style.transform = `scale(${s})`;
+      h.style.setProperty('--s', s);
+      h.style.left = ((window.innerWidth - DESIGN_W * s) / 2) + 'px';
+      h.style.top  = ((window.innerHeight - DESIGN_H * s) / 2) + 'px';
+    });
+    placeForm(s);
+    const slide = slides()[index];
+    if (slide) syncChrome(slide, s);
+  }
+  window.addEventListener('resize', () => { if (active) refit(); });
 
   document.addEventListener('fullscreenchange', () => {
     // Escaping fullscreen via the browser chrome should also leave present mode.

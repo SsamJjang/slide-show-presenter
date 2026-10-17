@@ -882,6 +882,192 @@ img.e-image { width: 100%; height: 100%; display: block; }
   100% { transform: scale(var(--s,1)) translateX(0); filter: none; }
 }
 
+/* ================================================================
+   CONNECT — the Meta Connect stage language. See js/connect.js.
+   ================================================================ */
+
+/* The form's static picture. In presentation it is hidden and the live
+   canvas takes its place (present.css), so it only shows on still surfaces. */
+.slide-form { position: absolute; inset: 0; pointer-events: none; }
+.slide-form img { width: 100%; height: 100%; display: block; }
+
+/* ---------- Icons ----------
+   The tile is a soft rounded square, not a hard box: a hairline edge and
+   a faint top light, so it sits in the slide like Meta's feature glyphs. */
+.e-icon { width: 100%; height: 100%; display: grid; place-items: center; }
+.e-icon svg { width: 100%; height: 100%; overflow: visible; }
+.e-icon.tile-dark, .e-icon.tile-light { border-radius: 27%; }
+.e-icon.tile-dark svg, .e-icon.tile-light svg { width: 52%; height: 52%; }
+.e-icon.tile-dark {
+  background: linear-gradient(180deg, #1c1f26, #121419);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.09), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.e-icon.tile-light {
+  background: linear-gradient(180deg, #ffffff, #f1f3f8);
+  box-shadow: inset 0 0 0 1px rgba(11,16,32,.07), 0 10px 30px rgba(11,16,32,.08);
+}
+
+/* ---------- Kit elements (js/kit.js) ---------- */
+.e-sculpture, .e-lens, .e-wires, .e-halftone, .e-bands { width: 100%; height: 100%; display: block; position: relative; }
+.e-sculpture img, .e-sculpture canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.e-sculpture.live img { opacity: 0; }
+.e-bands { overflow: hidden; }
+.e-bands .bd-rot { position: absolute; left: 50%; top: 50%; display: flex; }
+.e-bands i { display: block; height: 100%; position: relative; }
+.e-bands i.lined::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.2) 0 2px, transparent 2px 9px);
+}
+.e-lens .ln { transform-box: fill-box; transform-origin: center; }
+.e-lens .ln-mer path { stroke-dasharray: 1 1; stroke-dashoffset: 0; }
+.e-wires .wr-draw { stroke-dasharray: 1 1; stroke-dashoffset: 0; }
+.e-wires .wr-grow, .e-halftone .ht-grow { transform-box: fill-box; transform-origin: center; }
+.e-halftone .ht-wipe { transform-box: fill-box; transform-origin: left center; }
+/* Dotted lines keep marching after they have drawn — slow enough to feel
+   like drift, not like a loading bar. */
+.e-wires.flowing g > path { animation: wrMarch 1.8s linear infinite; }
+@keyframes wrMarch { to { stroke-dashoffset: calc(var(--period, 13px) * -1); } }
+
+/* ---------- Signature builds ----------
+   Only on a slide that is arriving (.building), only for elements left on
+   their signature entrance, and delayed by the element's slot in the
+   choreography (--bd). The resting state is always the finished element. */
+.entering .el { --bd: calc(min(var(--i, 0), 9) * 55ms); }
+.entering .el[data-anim="build"] > .el-anim { animation-name: elFade; }
+
+.building .el[data-anim="build"] .ln {
+  animation: knPop 1.1s cubic-bezier(.2,.9,.2,1) calc(var(--bd, 0ms) + var(--k, 0) * 90ms) both;
+}
+.building .el[data-anim="build"] .ln-mer path {
+  animation: knDraw 1.2s cubic-bezier(.6,0,.2,1) calc(var(--bd, 0ms) + var(--k, 0) * 90ms) both;
+}
+.building .el[data-anim="build"] .ln-fill,
+.building .el[data-anim="build"] .ln-gloss {
+  animation: knFade 1s cubic-bezier(.2,.8,.2,1) calc(var(--bd, 0ms) + var(--k, 0) * 90ms + 520ms) both;
+}
+.building .el[data-anim="build"] .wr-draw {
+  animation: knDraw 1.7s cubic-bezier(.6,0,.2,1) var(--bd, 0ms) both;
+}
+.building .el[data-anim="build"] .wr-grow,
+.building .el[data-anim="build"] .ht-grow {
+  animation: knGrow 1.6s cubic-bezier(.6,0,.2,1) var(--bd, 0ms) both;
+}
+.building .el[data-anim="build"] .ht-wipe {
+  animation: knWipe 1.5s cubic-bezier(.6,0,.2,1) var(--bd, 0ms) both;
+}
+.building .el[data-anim="build"] .e-bands i {
+  animation: bdRise 1s cubic-bezier(.2,.9,.2,1) calc(var(--bd, 0ms) + var(--k, 0) * 55ms) both;
+}
+.building .el[data-anim="build"] .e-sculpture:not(.live) img {
+  animation: scIn 1.6s cubic-bezier(.16,1,.3,1) var(--bd, 0ms) both;
+}
+@keyframes knDraw { from { stroke-dashoffset: 1; } }
+@keyframes knFade { from { opacity: 0; } }
+@keyframes knPop  { from { opacity: 0; transform: scale(.82) rotate(-8deg); } }
+@keyframes knGrow { from { transform: scale(0); } }
+@keyframes knWipe { from { transform: scaleX(0); } }
+@keyframes bdRise { from { transform: scaleY(0); opacity: 0; } }
+@keyframes scIn   { from { opacity: 0; transform: scale(.6) rotate(-24deg); filter: blur(14px); } }
+.thumb-frame .e-wires.flowing g > path { animation: none !important; }
+
+/* ---------- More type finishes ----------
+   Striped: the giant cropped words over the sculpture. Dissolve: the
+   countdown numerals breaking into lines. Mist: soft pastel, for white
+   slides. All degrade to the accent colour without clip-to-text. */
+.finish-stripes, .finish-dissolve, .finish-mist {
+  color: var(--accent);
+  -webkit-background-clip: text; background-clip: text;
+}
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .finish-stripes, .finish-dissolve, .finish-mist { color: transparent; -webkit-text-fill-color: transparent; }
+}
+.finish-stripes {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(6,10,44,.5) 0 2px, transparent 2px 8px),
+    linear-gradient(100deg, #9ff6ff 0%, #5aa2ff 30%, #a46bff 62%, #ff8fdc 100%);
+}
+.finish-dissolve {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(6,10,44,.66) 0 3px, transparent 3px 11px),
+    linear-gradient(180deg, #d4eeff 0%, #7cc0ff 28%, #3478ff 60%, #6c4dff 100%);
+  background-size: 100% 42%, 100% 100%;
+  background-position: 0 100%, 0 0;
+  background-repeat: no-repeat;
+}
+.finish-mist { background-image: linear-gradient(120deg, #ffc9e6 0%, #d3c4ff 35%, #b6ddff 70%, #dffaff 100%); }
+
+/* ---------- Mist fields ----------
+   Fixed Connect tints for the gradient-mist backgrounds. Declared on the
+   atmosphere layer too, because in presentation the field lives outside
+   any .slide. */
+.slide, .atmos-layer {
+  --cx-blue: rgba(38, 92, 255, .62);    --cx-blue-0: rgba(38, 92, 255, 0);
+  --cx-violet: rgba(120, 70, 255, .5);  --cx-violet-0: rgba(120, 70, 255, 0);
+  --cx-cyan: rgba(90, 220, 255, .36);   --cx-cyan-0: rgba(90, 220, 255, 0);
+  --cx-magenta: rgba(230, 80, 210, .34); --cx-magenta-0: rgba(230, 80, 210, 0);
+  --cx-orange: rgba(255, 140, 70, .42); --cx-orange-0: rgba(255, 140, 70, 0);
+  --cx-teal: rgba(40, 210, 190, .38);   --cx-teal-0: rgba(40, 210, 190, 0);
+  --cx-pink: rgba(255, 186, 228, .9);   --cx-pink-0: rgba(255, 186, 228, 0);
+  --cx-sky: rgba(176, 214, 255, .95);   --cx-sky-0: rgba(176, 214, 255, 0);
+  --cx-peach: rgba(255, 222, 196, .85); --cx-peach-0: rgba(255, 222, 196, 0);
+  --cx-lilac: rgba(214, 196, 255, .9);  --cx-lilac-0: rgba(214, 196, 255, 0);
+}
+
+/* ---------- Persistent chrome ---------- */
+.slide-chrome {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 120px;
+  pointer-events: none; z-index: 60;
+  font-family: var(--font-display); color: #fff;
+  transition: color .9s ease, opacity .9s ease;
+}
+.slide-chrome.tone-dark { color: #0b1020; }
+.slide-chrome .ch-l, .slide-chrome .ch-r {
+  position: absolute; bottom: 48px;
+  font-size: 24px; font-weight: 500; letter-spacing: -.005em; line-height: 1;
+  display: flex; align-items: center; gap: 11px;
+}
+.slide-chrome .ch-l { left: 68px; opacity: .92; }
+.slide-chrome .ch-r { right: 68px; opacity: .7; }
+/* The APEX peak, softened: rounded joins, iridescent fill. */
+.slide-chrome .ch-mark {
+  display: inline-block; width: 28px; height: 24px;
+  background: linear-gradient(135deg, #7df3ff, #3f7dff 50%, #a46bff 78%, #ff7fd6);
+  clip-path: path('M14 1.5c1 0 1.8.5 2.3 1.4l10.6 18.2c.9 1.6-.2 3.4-2 3.4h-3.6c-.9 0-1.7-.5-2.1-1.2L14 13.6l-5.2 9.7c-.4.7-1.2 1.2-2.1 1.2H3.1c-1.8 0-2.9-1.8-2-3.4L11.7 2.9c.5-.9 1.3-1.4 2.3-1.4z');
+}
+
+/* ---------- Iridescent type ----------
+   The Connect countdown numerals: a smooth thin-film sweep across the
+   glyphs, the same four colours as the form. Degrades to solid accent. */
+.finish-connect {
+  color: var(--accent);
+  -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(100deg, #9ff6ff 0%, #5aa2ff 30%, #a46bff 62%, #ff8fdc 100%);
+}
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .finish-connect { color: transparent; -webkit-text-fill-color: transparent; }
+}
+
+/* ---------- Connect entrances ----------
+   Flow: out of soft focus, drifting up into place on a long ease-out —
+   the way words arrive on a Connect screen. Nothing snaps, nothing wipes. */
+.entering .el[data-anim="flow"] > .el-anim {
+  animation-name: elFlow; animation-duration: calc(1.1s * var(--sp,1));
+  animation-timing-function: cubic-bezier(.16,1,.3,1);
+  animation-delay: calc(min(var(--i, 0), 9) * 80ms * var(--sp, 1));
+}
+@keyframes elFlow { from { opacity: 0; transform: translateY(24px); filter: blur(14px); } }
+.el.build-hidden[data-anim="flow"] > .el-anim { transform: translateY(18px); filter: blur(12px); }
+.el[data-anim="flow"] > .el-anim {
+  transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1),
+              filter .9s cubic-bezier(.16,1,.3,1);
+}
+/* Settle: soft focus pull with a slow scale-down, for products on black. */
+.entering .el[data-anim="settle"] > .el-anim {
+  animation-name: elSettle; animation-duration: calc(1.5s * var(--sp,1));
+  animation-timing-function: cubic-bezier(.16,1,.3,1);
+}
+@keyframes elSettle { from { opacity: 0; transform: scale(1.08); filter: blur(12px); } }
+
 /* ---------------- Print / PDF ----------------
    Chrome's "Save as PDF" is the export path. One slide per page,
    landscape, no chrome, no page breaks inside a slide. */

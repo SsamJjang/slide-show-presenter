@@ -39,6 +39,22 @@ const ELEMENT_DEFAULTS = {
     kind: 'browser',        // browser | phone | window
     src: '', url: 'apex.dev', radius: 18,
   },
+  icon: {
+    glyph: 'spark',         // see Connect.ICONS
+    tone: 'iris',           // iris | accent | light | dark
+    tile: 'dark',           // none | dark | light — the soft rounded tile behind it
+    weight: 1.7,            // stroke width on the 24px grid
+  },
+  // ---- Connect kit (js/kit.js) ----
+  sculpture: { species: 'twist', scheme: 'connect', roll: 30, turn: 0, scale: .9, speed: 1, halo: true, twist: null, anim: 'build' },
+  lens:      { shape: 'leaf', count: 7, arrange: 'row', fill: 'mixed', contours: 11, fat: .38,
+               gap: .12, tilt: 0, spread: 1, weight: 1.6, scheme: 'connect', anim: 'build' },
+  wires:     { curve: 'sweep', count: 9, spread: 1, dot: 'dots', gap: 13, weight: 2.6,
+               color: 'iris', scheme: 'connect', alpha: 1, flow: true, anim: 'build' },
+  bands:     { count: 9, angle: 0, scheme: 'connect', variance: .6, gap: 0, lines: false,
+               depth: true, radius: 0, seed: 3, anim: 'build' },
+  halftone:  { pattern: 'radial', density: 34, size: .92, falloff: 1.2, cx: .5, cy: .5,
+               invert: false, color: 'iris', scheme: 'connect', alpha: 1, anim: 'build' },
   image: { src: '', fit: 'cover', radius: 0, alt: '' },
   code:  { code: 'const ship = () => true;', lang: 'js', size: 26, showLines: true },
   chart: {
@@ -80,6 +96,9 @@ function makeSlide(patch = {}) {
     bgGrain: false,         // film grain overlay, stops large gradients banding
     bgVignette: false,
     transition: 'fade',     // fade | slide | push | zoom | none
+    form: null,             // Connect form: { pose, scheme } — see ConnectForm
+    chrome: true,           // show the deck's persistent footer on this slide
+    chromeTone: 'auto',     // auto | light | dark — auto reads the background
     notes: '',
   }, patch);
 }
@@ -92,6 +111,7 @@ function makeDeck() {
     accent: null,           // hex override — derives the whole palette
     harmony: 'analogous',   // how the secondary is derived from the accent
     ratio: '16:9',
+    chrome: { on: false, left: 'APEX', right: 'APEX Connect 2026' },
     slides: [],
   };
 }

@@ -46,6 +46,12 @@ const Continuity = (() => {
       case 'code':   return 'code:' + String(el.code || '').slice(0, 60);
       case 'table':  return 'table';
       case 'shape':  return `shape:${el.shape}:${el.fill}:${el.material || 'none'}`;
+      case 'icon':   return `icon:${el.glyph}`;
+      case 'sculpture': return `sculpt:${el.species}`;
+      case 'lens':      return `lens:${el.shape}:${el.count}`;
+      case 'wires':     return `wires:${el.curve}`;
+      case 'bands':     return 'bands';
+      case 'halftone':  return `halftone:${el.pattern}`;
       default:       return null;
     }
   }

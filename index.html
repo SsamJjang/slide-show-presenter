@@ -11,11 +11,14 @@
 </head>
 <body>
 
-<!-- ============ TOP BAR ============ -->
+<!-- ============ TOP BAR ============
+     Only what applies to the whole deck. Everything you put ON a slide lives
+     in the library on the left; everything about the selection lives in the
+     inspector on the right. -->
 <header class="topbar">
   <div class="brand">
     <div class="brand-mark"></div>
-    <input id="deckTitle" class="deck-title" value="Untitled Deck" spellcheck="false">
+    <input id="deckTitle" class="deck-title" value="Untitled Deck" spellcheck="false" aria-label="Deck title">
   </div>
 
   <div class="tb-group">
@@ -23,47 +26,40 @@
     <button class="tb" data-act="redo" title="Redo (Ctrl+Shift+Z)">${icon:redo}</button>
   </div>
 
-  <div class="tb-sep"></div>
-
-  <div class="tb-group" id="insertGroup">
-    <button class="tb" data-insert="text"   title="Text (T)">${icon:text}</button>
-    <button class="tb" data-insert="shape"  title="Shape (S)">${icon:shape}</button>
-    <button class="tb" data-insert="image"  title="Image (I)">${icon:image}</button>
-    <button class="tb" data-insert="chart"  title="Chart">${icon:chart}</button>
-    <button class="tb" data-insert="mockup" title="Device mockup">${icon:device}</button>
-    <button class="tb" data-insert="code"   title="Code block">${icon:code}</button>
-    <button class="tb" data-insert="table"  title="Table">${icon:table}</button>
-  </div>
-
-  <div class="tb-sep"></div>
-
-  <div class="tb-group">
-    <button class="tb" data-act="layouts" title="Slide layouts">${icon:layout}<span>Layouts</span></button>
-    <button class="tb" data-act="theme"   title="Deck theme">${icon:palette}<span>Theme</span></button>
-  </div>
-
   <div class="spacer"></div>
 
   <div class="tb-group">
-    <button class="tb" data-act="shortcuts" title="Keyboard shortcuts (?)">${icon:key}</button>
-    <button class="tb" data-act="export" title="Export">${icon:export}<span>Export</span></button>
-    <button class="tb primary" data-act="present" title="Present (Ctrl+Enter)">${icon:play}<span>Present</span></button>
+    <div class="menu-wrap">
+      <button class="tb" data-act="menu" title="More">${icon:more}</button>
+      <div class="menu" id="mainMenu" hidden>
+        <button data-act="theme">${icon:palette}<span>Theme &amp; accent</span><kbd>Ctrl K</kbd></button>
+        <button data-act="connectDeck">${icon:spark}<span>Open the sample Connect deck</span></button>
+        <button data-act="shortcuts">${icon:key}<span>Keyboard shortcuts</span><kbd>?</kbd></button>
+      </div>
+    </div>
+    <button class="tb" data-act="export" title="Export (Ctrl+E)">${icon:export}<span>Export</span></button>
+    <button class="tb primary" data-act="present" title="Present from this slide (Ctrl+Enter from the start)">${icon:play}<span>Present</span></button>
   </div>
 </header>
 
 <!-- ============ WORKSPACE ============ -->
-<main class="workspace">
+<main class="workspace" id="workspace">
 
-  <!-- Slide sorter -->
-  <aside class="rail" id="rail">
-    <div class="rail-head">
-      <span>Slides</span>
-      <button class="mini" data-act="addSlide" title="New slide (Ctrl+M)">+</button>
+  <!-- Library: what you can put on a slide. Click to add, or drag onto the canvas. -->
+  <nav class="dock" id="dock" aria-label="Library">
+    <button class="dk" data-pane="elements" title="Elements">${icon:shape}<span>Elements</span></button>
+    <button class="dk" data-pane="text" title="Text">${icon:text}<span>Text</span></button>
+    <button class="dk" data-pane="media" title="Media">${icon:image}<span>Media</span></button>
+    <button class="dk" data-pane="backgrounds" title="Backgrounds">${icon:palette}<span>Background</span></button>
+    <button class="dk" data-pane="layouts" title="Layouts">${icon:layout}<span>Layouts</span></button>
+  </nav>
+
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <input class="drawer-search" id="drawerSearch" placeholder="Search" spellcheck="false" aria-label="Search the library">
+      <button class="mini" data-act="closeDrawer" title="Hide the library">${icon:close}</button>
     </div>
-    <div class="rail-list" id="railList"></div>
-    <div class="rail-foot">
-      <button class="ghost" data-act="addSlide">New slide</button>
-    </div>
+    <div class="drawer-body" id="drawerBody"></div>
   </aside>
 
   <!-- Canvas -->
@@ -83,14 +79,15 @@
 
     <div class="stage-bar">
       <div class="zoom">
-        <button class="mini" data-act="zoomOut">−</button>
+        <button class="mini" data-act="zoomOut" title="Zoom out">−</button>
         <span id="zoomLabel">Fit</span>
-        <button class="mini" data-act="zoomIn">+</button>
+        <button class="mini" data-act="zoomIn" title="Zoom in">+</button>
         <button class="mini" data-act="zoomFit">Fit</button>
       </div>
       <div class="stage-status" id="stageStatus">Slide 1 of 1</div>
-      <div class="notes-toggle">
-        <button class="mini" data-act="toggleNotes">Speaker notes</button>
+      <div class="stage-acts">
+        <button class="mini" data-act="preview" title="Play this slide's entrance on the canvas">${icon:play} Preview</button>
+        <button class="mini" data-act="toggleNotes">Notes</button>
       </div>
     </div>
 
@@ -98,9 +95,15 @@
       <label>Speaker notes — slide <b id="notesSlideNo">1</b></label>
       <textarea id="notesArea" placeholder="What you'll say on this slide. Visible in Presenter View, never on the projector."></textarea>
     </div>
+
+    <!-- Filmstrip -->
+    <div class="strip" id="rail">
+      <div class="rail-list" id="railList"></div>
+      <button class="strip-add" data-act="addSlide" title="New slide (Ctrl+M)">+</button>
+    </div>
   </section>
 
-  <!-- Inspector -->
+  <!-- Inspector: only what applies to the current selection. -->
   <aside class="inspector" id="inspector"></aside>
 </main>
 
@@ -133,6 +136,9 @@
 <script src="js/backgrounds.js"></script>
 <script src="js/shapes.js"></script>
 <script src="js/motion.js"></script>
+<script src="js/connect.js"></script>
+<script src="js/flow.js"></script>
+<script src="js/kit.js"></script>
 <script src="js/continuity.js"></script>
 <script src="js/store.js"></script>
 <script src="js/render.js"></script>
@@ -141,6 +147,7 @@
 <script src="js/inspector.js"></script>
 <script src="js/canvas.js"></script>
 <script src="js/rail.js"></script>
+<script src="js/library.js"></script>
 <script src="js/present.js"></script>
 <script src="js/exporter.js"></script>
 <script src="js/app.js"></script>
