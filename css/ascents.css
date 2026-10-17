@@ -1,0 +1,207 @@
+/* ============================================================
+   APEX Ascents — the stage design system.
+
+   A one-to-one rebuild of the Meta Connect 2025 keynote screens,
+   for APEX. Every value here was matched against frames of the
+   Connect 2025 broadcast and the Studio Dumbar identity films:
+   the fields, the type, the footer, and how things arrive.
+
+   Scenes are drawn in a fixed 1920 x 1080 space and scaled on the
+   way out, so the editor, thumbnails and the projector are the
+   same render.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Ascents';
+  src: url('../fonts/Figtree.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: block;
+}
+
+.scene {
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, .72);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  position: relative;
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  font-family: 'Ascents', 'Segoe UI Variable Display', system-ui, sans-serif;
+  font-weight: 400;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  background: #000;
+}
+.scene.light { --ink: #0c1024; --ink-2: rgba(12, 16, 36, .62); }
+
+/* ---------------- Fields ----------------
+   The backgrounds Connect puts its screens on. The navy field is a deep
+   indigo pooling to royal blue, with a violet bloom and a cold teal bloom
+   that drift very slowly — it is never flat and never busy. */
+.field { position: absolute; inset: 0; overflow: hidden; }
+.field i { position: absolute; border-radius: 50%; filter: blur(110px); will-change: transform; }
+
+.field-navy { background: radial-gradient(120% 140% at 30% 110%, #2342e6 0%, #1530b8 28%, #0d1a78 55%, #090f4f 100%); }
+.field-navy i:nth-child(1) { width: 1100px; height: 900px; left: -220px; top: -380px; background: #5a2fc4; opacity: .55; animation: drift1 38s ease-in-out infinite alternate; }
+.field-navy i:nth-child(2) { width: 1000px; height: 900px; right: -300px; top: 120px; background: #1aa0c8; opacity: .38; animation: drift2 46s ease-in-out infinite alternate; }
+.field-navy i:nth-child(3) { width: 900px; height: 700px; left: 520px; bottom: -520px; background: #3d62ff; opacity: .45; animation: drift3 52s ease-in-out infinite alternate; }
+
+/* Pale: the feature-card field ("Live AI"). Cool off-white to blue-grey. */
+.field-pale { background: linear-gradient(105deg, #eef1f5 0%, #cdd6e1 38%, #a2b2c6 72%, #8296b0 100%); }
+.field-pale i:nth-child(1) { width: 1200px; height: 900px; left: -400px; top: -360px; background: #ffffff; opacity: .7; animation: drift1 44s ease-in-out infinite alternate; }
+.field-pale i:nth-child(2) { width: 1000px; height: 800px; right: -300px; bottom: -400px; background: #9fb2cc; opacity: .45; animation: drift2 50s ease-in-out infinite alternate; }
+
+/* Pastel: the opener's daylight gradient — sky blue into rose and peach. */
+.field-pastel { background: linear-gradient(120deg, #5aa8ff 0%, #8fc3ff 32%, #d6c6f2 58%, #ffc4bf 80%, #ffd7a6 100%); }
+.field-pastel i:nth-child(1) { width: 900px; height: 900px; left: 900px; top: 300px; background: #ff9ccf; opacity: .5; animation: drift2 40s ease-in-out infinite alternate; }
+.field-pastel i:nth-child(2) { width: 900px; height: 800px; left: -200px; top: -200px; background: #3d8cff; opacity: .55; animation: drift1 48s ease-in-out infinite alternate; }
+
+/* Grey: product availability ("Available Sept 30"). */
+.field-grey { background: radial-gradient(90% 120% at 50% 20%, #e8ebef 0%, #c8ced6 60%, #aab2bd 100%); }
+.field-black { background: #000; }
+.field-white { background: #fff; }
+
+@keyframes drift1 { to { transform: translate(140px, 90px) scale(1.12); } }
+@keyframes drift2 { to { transform: translate(-160px, -70px) scale(1.08); } }
+@keyframes drift3 { to { transform: translate(120px, -110px) scale(1.15); } }
+
+/* ---------------- Footer ----------------
+   "∞ Meta" bottom-left, "Meta Connect" bottom-right, on every graphic. */
+.foot { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; pointer-events: none; }
+.foot b, .foot span {
+  position: absolute; bottom: 44px; font-size: 25px; font-weight: 500; line-height: 1;
+  display: flex; align-items: center; gap: 10px;
+}
+.foot b { left: 64px; }
+.foot span { right: 64px; opacity: .9; }
+.mark {
+  display: inline-block; width: 30px; height: 30px; flex: none;
+  background: url('../assets/apex.png') center / contain no-repeat;
+}
+.foot .mark { width: 30px; height: 30px; }
+
+/* ---------------- Motion ----------------
+   How a Connect screen arrives: each piece fades up out of a soft focus on
+   a long ease-out, in reading order. Nothing bounces, nothing wipes.
+   The player adds .play; --o is each piece's place in the order. */
+.scene [data-in] { --o: 0; }
+.scene.play [data-in] { animation: inUp 1.05s var(--ease) calc(var(--start, 0ms) + var(--o) * 110ms + 180ms) both; }
+.scene.play .el-media[data-in] { animation-name: inMedia; animation-duration: 1.4s; }
+.scene.play .el-sculpture[data-in], .scene.play .el-glow[data-in] { animation-name: inFade; animation-duration: 1.8s; }
+.scene.play .foot { animation: inFade 1.2s ease calc(var(--start, 0ms) + 200ms) both; }
+@keyframes inUp    { from { opacity: 0; transform: translateY(30px); filter: blur(12px); } }
+@keyframes inMedia { from { opacity: 0; transform: scale(1.035); filter: blur(16px); } }
+@keyframes inFade  { from { opacity: 0; } }
+
+/* Leaving: a broadcast dissolve — the outgoing screen fades as a whole. */
+.scene.leave { animation: outFade .55s ease both; }
+@keyframes outFade { to { opacity: 0; } }
+
+/* Thumbnails and the add-scene gallery never animate. */
+.still .field i, .still [data-in] { animation: none !important; }
+
+/* ---------------- Elements ---------------- */
+.scene-host { width: 1920px; height: 1080px; transform-origin: top left; }
+.el { position: absolute; }
+
+/* Text. Colour follows the field unless set: soft is the secondary grey
+   Connect uses for numbers and captions; gloss is the blue type sheen. */
+.txt { white-space: pre-wrap; overflow-wrap: break-word; outline: none; color: var(--ink); }
+.txt.c-muted { color: var(--ink-2); }
+.txt.c-blue { color: #6fb4ff; }
+.scene.light .txt.c-blue { color: #2f6dff; }
+.txt.c-gloss {
+  background: linear-gradient(180deg, #d2f1ff 0%, #7cc6ff 30%, #3f86ff 62%, #6a4fe6 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+
+/* Icon + word, centred in its box. On the pale field the word is white
+   with a soft shadow, exactly as the "Live AI" card. */
+.lock {
+  display: flex; align-items: center; justify-content: center; gap: .24em;
+  font-weight: 500; letter-spacing: -.012em; line-height: 1; white-space: nowrap; color: var(--ink);
+}
+.lock svg { flex: none; overflow: visible; }
+.lock span { outline: none; }
+.scene:has(.field-pale) .lock { color: #fff; text-shadow: 0 2px 34px rgba(30, 50, 90, .3); }
+.scene:has(.field-pale) .lock svg { filter: drop-shadow(0 2px 20px rgba(30, 50, 90, .22)); }
+.lock.brand { gap: .26em; }
+
+/* Images and video. */
+.el-media { overflow: hidden; }
+.el-media.round { border-radius: 28px; }
+.el-media img, .el-media video { width: 100%; height: 100%; display: block; }
+.el-media .ph {
+  width: 100%; height: 100%; display: grid; place-items: center; text-align: center;
+  background: rgba(255, 255, 255, .06); border-radius: inherit;
+  color: rgba(255, 255, 255, .5); font-size: 26px; line-height: 1.4;
+}
+.el-media .ph small { font-size: 20px; opacity: .8; }
+.scene.light .el-media .ph { background: rgba(12, 16, 36, .05); color: rgba(12, 16, 36, .45); }
+/* An empty box is a prompt for you, never something the audience sees. */
+.scene.play .el-media.empty { visibility: hidden; }
+
+/* Sculpture: live canvas on stage and in the player, a still elsewhere. */
+.sculpt { position: absolute; inset: 0; }
+.sculpt img, .sculpt canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sculpt.live img { opacity: 0; }
+
+/* Countdown numerals. */
+.count { display: block; overflow: visible; }
+.count text { font-family: 'Ascents', system-ui, sans-serif; font-weight: 400; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+/* Pills. */
+.pill { display: inline-flex; align-items: center; white-space: nowrap; font-weight: 500; }
+.pill span { outline: none; }
+.pill-live { height: 52px; padding: 0 22px 0 18px; gap: 12px; border-radius: 26px; background: #e8303f; color: #fff; font-size: 24px; }
+.pill-live::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.pill-soft {
+  height: 64px; padding: 0 28px; gap: 12px; border-radius: 32px; font-size: 28px; color: #fff;
+  background: rgba(255, 255, 255, .16); backdrop-filter: blur(20px); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .28);
+}
+.pill-soft svg { width: 30px; height: 30px; }
+.pill-tag { height: 40px; padding: 0 18px; border-radius: 20px; font-size: 20px; color: #fff; background: rgba(40, 44, 56, .72); }
+
+.still .glow { animation: none !important; }
+
+/* Countdown numerals arrive out of soft focus. */
+.scene.play .count .cnt-fill { animation: cntIn 1.4s var(--ease) calc(var(--start, 0ms) + var(--o) * 110ms + 200ms) both; }
+@keyframes cntIn { from { opacity: 0; filter: blur(14px); } }
+.scene.play .el-count[data-in] { animation: none; }
+
+/* ---------------- Glow ----------------
+   A soft bloom of coloured light that slowly breathes. */
+.glow { position: absolute; inset: 0; border-radius: 50%; filter: blur(70px); animation: breathe 14s ease-in-out infinite alternate; }
+.glow.g-iris   { background: radial-gradient(closest-side, rgba(120, 210, 255, .85), rgba(80, 110, 255, .55) 45%, rgba(170, 90, 255, .25) 75%, rgba(170, 90, 255, 0)); }
+.glow.g-violet { background: radial-gradient(closest-side, rgba(160, 110, 255, .8), rgba(100, 70, 230, .45) 50%, rgba(100, 70, 230, 0)); }
+.glow.g-pink   { background: radial-gradient(closest-side, rgba(255, 150, 220, .8), rgba(220, 90, 200, .4) 50%, rgba(220, 90, 200, 0)); }
+.glow.g-cyan   { background: radial-gradient(closest-side, rgba(130, 240, 255, .8), rgba(60, 170, 255, .4) 50%, rgba(60, 170, 255, 0)); }
+.glow.g-warm   { background: radial-gradient(closest-side, rgba(255, 200, 150, .8), rgba(255, 130, 140, .4) 50%, rgba(255, 130, 140, 0)); }
+@keyframes breathe { to { transform: scale(1.12) translate(2%, -2%); opacity: .85; } }
+
+/* ---------------- The open ----------------
+   Liquid colour swells out of the field and merges, then blooms past the
+   edges and dissolves, leaving the scene. Only while the scene plays. */
+.op-liquid, .op-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.op-liquid canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.op-glow {
+  background: radial-gradient(60% 70% at 50% 55%, rgba(140, 200, 255, .55), rgba(110, 80, 255, .25) 45%, rgba(110, 80, 255, 0) 75%);
+  filter: blur(40px);
+}
+.scene.opener.play { --start: 2700ms; }
+.scene.opener.play .op-liquid { animation: opLiquid 3.6s cubic-bezier(.45, 0, .25, 1) both; }
+.scene.opener.play .op-glow { animation: opGlow 3.6s ease both; }
+@keyframes opLiquid {
+  0%   { opacity: 0; transform: scale(.55); filter: blur(12px); }
+  22%  { opacity: 1; filter: blur(0); }
+  64%  { opacity: 1; transform: scale(1.05); filter: blur(0); }
+  100% { opacity: 0; transform: scale(1.9); filter: blur(30px); }
+}
+@keyframes opGlow { 0% { opacity: 0; } 40% { opacity: 1; } 75% { opacity: .8; } 100% { opacity: 0; transform: scale(1.4); } }
+.el-media img, .el-media video { -webkit-user-drag: none; user-select: none; }
+
+/* Ice: the Connect 2022 / 2024 daylight field — white into a cool ice blue,
+   with soft light drifting through it. Dark type sits on it. */
+.field-ice { background: linear-gradient(180deg, #f8fbff 0%, #eaf2fc 55%, #d9e7f7 100%); }
+.field-ice i:nth-child(1) { width: 1200px; height: 900px; left: -300px; top: -400px; background: #ffffff; opacity: .9; animation: drift1 44s ease-in-out infinite alternate; }
+.field-ice i:nth-child(2) { width: 1000px; height: 900px; right: -300px; bottom: -420px; background: #bcd6f5; opacity: .55; animation: drift2 52s ease-in-out infinite alternate; }
+.field-ice i:nth-child(3) { width: 800px; height: 700px; left: 700px; top: 200px; background: #e6dcfb; opacity: .35; animation: drift3 60s ease-in-out infinite alternate; }

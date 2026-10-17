@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APEX Ascents</title>
+<link rel="preload" href="fonts/Figtree.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/ascents.css">
+<link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-l">
+    <i class="mark app-mark"></i>
+    <input id="title" class="title" value="APEX Ascents 2027" spellcheck="false" aria-label="Deck title">
+  </div>
+  <div class="bar-r">
+    <button class="btn ghost" id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button class="btn ghost" id="add" title="Add a scene (N)"><span class="plus"></span>Add scene</button>
+    <div class="menu-wrap">
+      <button class="btn ghost icon" id="more" title="More" aria-label="More">•••</button>
+      <div class="menu" id="menu" hidden>
+        <button data-m="export">Save deck file…</button>
+        <button data-m="import">Open deck file…</button>
+        <button data-m="new">New deck</button>
+      </div>
+    </div>
+    <button class="btn primary" id="present" title="Present from this scene (Ctrl+Enter)">Present</button>
+  </div>
+</header>
+
+<main class="work">
+  <aside class="list" id="list" aria-label="Scenes"></aside>
+
+  <section class="center">
+    <div class="stage-wrap" id="stageWrap">
+      <div class="stage" id="stage"></div>
+    </div>
+    <div class="scenebar" id="scenebar"></div>
+  </section>
+</main>
+
+<!-- Add scene -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2>Add a scene</h2>
+      <button class="btn ghost" id="sheetClose">Close</button>
+    </div>
+    <div class="sheet-body" id="gallery"></div>
+  </div>
+</div>
+
+<!-- Presenting -->
+<div class="player" id="player" hidden></div>
+
+<input type="file" id="file" hidden>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/media.js"></script>
+<script src="js/sculpture.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/deck.js"></script>
+<script src="js/player.js"></script>
+<script src="js/editor.js"></script>
+</body>
+</html>
