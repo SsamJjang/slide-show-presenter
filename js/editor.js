@@ -118,6 +118,11 @@ const Editor = (() => {
       ctrls.push(Sculpture.mount(c, JSON.parse(b.dataset.sculpt)));
       b.classList.add('live');
     });
+    stage.querySelectorAll('.mat[data-mat]').forEach(b => {
+      const c = document.createElement('canvas'); b.appendChild(c);
+      ctrls.push(Moments.material(c, b.dataset.mat));
+      b.classList.add('live');
+    });
     stage.querySelectorAll('video').forEach(v => v.play().catch(() => {}));
     stageRelease = () => ctrls.forEach(c => c.destroy());
     if (sel && !elOf(sel)) sel = null;
@@ -138,9 +143,13 @@ const Editor = (() => {
     box.style.width = r.width + 'px';
     box.style.height = r.height + 'px';
     const e = elOf(sel);
-    box.dataset.kind = e.type === 'pill' ? 'none' : (e.type === 'text' ? 'text' : 'box');
+    box.dataset.kind = e.type === 'pill' ? 'none' : (TYPEY.includes(e.type) ? 'text' : 'box');
     placeTools();
   }
+
+  // Elements made of type: sides change the width, corners scale the type.
+  const TYPEY = ['text', 'stat', 'list'];
+  const BASE = { text: 0, stat: 220, list: 44, lockup: 96, count: 300 };
 
   function select(id) {
     if (sel === id) return;
@@ -166,7 +175,7 @@ const Editor = (() => {
     const again = sel === n.dataset.id;          // a second click on the selection edits it
     select(n.dataset.id);
     const e = elOf(sel);
-    drag = { mode: 'move', id: e.id, sx: ev.clientX, sy: ev.clientY, x: e.x, y: e.y, moved: false, again, orig: { ...e } };
+    drag = { mode: 'move', id: e.id, sx: ev.clientX, sy: ev.clientY, x: e.x, y: e.y, moved: false, again, hit: ev.target, orig: { ...e } };
     stage.setPointerCapture(ev.pointerId);
   });
 
@@ -210,20 +219,18 @@ const Editor = (() => {
   function resizeTo(e, n, dx, dy, free) {
     const H = drag.h;
     const left = H.includes('w'), top = H.includes('n'), corner = H.length === 2;
-    if (e.type === 'text' || e.type === 'lockup' || e.type === 'count') {
-      if (!corner || e.type !== 'text') {
-        if (e.type === 'text') {
-          const w = Math.max(80, drag.w + (left ? -dx : dx));
-          e.w = Math.round(w); if (left) e.x = Math.round(drag.x + drag.w - w);
-          n.style.width = e.w + 'px'; n.style.left = e.x + 'px';
-          return;
-        }
+    if (e.type in BASE) {
+      if (!corner && TYPEY.includes(e.type)) {
+        const w = Math.max(80, drag.w + (left ? -dx : dx));
+        e.w = Math.round(w); if (left) e.x = Math.round(drag.x + drag.w - w);
+        n.style.width = e.w + 'px'; n.style.left = e.x + 'px';
+        return;
       }
       // Corners: scale the type.
-      const base = drag.size || (e.type === 'text' ? Scenes.TEXT_STYLES[e.style].size : e.type === 'count' ? 300 : 96);
+      const base = drag.size || (e.type === 'text' ? Scenes.TEXT_STYLES[e.style].size : BASE[e.type]);
       const f = Math.max(.15, (drag.w + (left ? -dx : dx)) / drag.w);
       e.size = Math.round(base * f);
-      if (e.type === 'text') { e.w = Math.round(drag.w * f); if (left) e.x = Math.round(drag.x + drag.w - e.w); }
+      if (TYPEY.includes(e.type)) { e.w = Math.round(drag.w * f); if (left) e.x = Math.round(drag.x + drag.w - e.w); }
       n.innerHTML = Scenes.body(e);
       n.style.width = e.w + 'px'; n.style.left = e.x + 'px';
       return;
@@ -246,7 +253,7 @@ const Editor = (() => {
     const d = drag; drag = null;
     stage.querySelector('.gv') && (stage.querySelector('.gv').hidden = true);
     stage.querySelector('.gh') && (stage.querySelector('.gh').hidden = true);
-    if (d.mode === 'move' && !d.moved) { if (d.again) startEdit(d.id); return; }
+    if (d.mode === 'move' && !d.moved) { if (d.again) startEdit(d.id, d.hit); return; }
     // The element was changed live while dragging. Put it back, then apply
     // the result through the deck, so the whole gesture is one undo step.
     const e = elOf(d.id), now = { ...e };
@@ -265,10 +272,13 @@ const Editor = (() => {
     // Editing may have started on the first click of this double-click; the
     // browser's own double-click then selects one word. Select it all again.
     if (editing) { if (performance.now() - editing.t < 700) document.getSelection().selectAllChildren(editing.node); return; }
-    const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('#stage .el') || nodeOf(sel);
-    if (n) startEdit(n.dataset.id);
+    const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+    const n = hit?.closest('#stage .el') || nodeOf(sel);
+    if (n) startEdit(n.dataset.id, hit);
   });
-  function startEdit(id) {
+  /* `at` picks which text to type into when an element has several (a
+     card's title or its line); otherwise the first. */
+  function startEdit(id, at = null) {
     if (editing) return;
     const e = elOf(id), n = nodeOf(id);
     if (!e || !n) return;
@@ -279,7 +289,11 @@ const Editor = (() => {
       return;
     }
     if (sel !== id) select(id);
-    const t = nodeOf(id)?.querySelector('[data-edit]'); if (!t) return;
+    const node = nodeOf(id);
+    const t = (at && node?.contains(at) && at.closest('[data-edit]')) || node?.querySelector('[data-edit]');
+    if (!t) return;
+    // A list is typed as plain lines, one item per line.
+    if (e.type === 'list') { t.textContent = e.text; t.classList.add('raw'); }
     editing = { id: e.id, node: t, t: performance.now() };
     t.contentEditable = 'plaintext-only'; t.spellcheck = false;
     t.focus();
@@ -289,7 +303,7 @@ const Editor = (() => {
   stage.addEventListener('keydown', (ev) => {
     if (!editing) return;
     const e = elOf(editing.id);
-    if (ev.key === 'Escape' || (ev.key === 'Enter' && (e.type !== 'text' || ev.ctrlKey))) {
+    if (ev.key === 'Escape' || (ev.key === 'Enter' && (!['text', 'list', 'card'].includes(e.type) || ev.ctrlKey))) {
       ev.preventDefault(); ev.stopPropagation();   // ends typing; keeps the element selected
       endEdit();
     }
@@ -302,7 +316,10 @@ const Editor = (() => {
     node.contentEditable = 'false';
     $('sel')?.classList.remove('editing');
     const text = node.innerText.replace(/\n$/, '');
-    if (elOf(id) && elOf(id).text !== text) Deck.change(() => { elOf(id).text = text; });
+    const field = node.dataset.edit || 'text';
+    const e = elOf(id);
+    if (e && e[field] !== text) Deck.change(() => { elOf(id)[field] = text; });
+    else if (e && e.type === 'list') { const n = nodeOf(id); if (n) n.innerHTML = Scenes.body(e); }
   }
 
   let pickFor = null;
@@ -378,15 +395,31 @@ const Editor = (() => {
       h += seg('glyph', e.glyph, [['spark', 'Sparkle'], ['mark', 'APEX logo']]);
     } else if (e.type === 'media') {
       h += seg('fit', e.fit, [['cover', 'Fill'], ['contain', 'Fit']]) + sep +
-        seg('round', !!e.round, [[true, 'Rounded'], [false, 'Square']]) + sep +
+        seg('round', e.round === 'circle' ? 'circle' : !!e.round, [[false, 'Square'], [true, 'Rounded'], ['circle', 'Circle']]) + sep +
         `<button class="tbtn" data-act="replace">Replace…</button>`;
     } else if (e.type === 'sculpture') {
       h += `<select data-set="shape" class="tsel">${[['twist', 'Twist'], ['ribbon', 'Ribbon'], ['lens', 'Lens'], ['pebble', 'Pebble'],
-        ['petal', 'Petal'], ['liquid', 'Liquid'], ['orb', 'Orb'], ['silk', 'Silk'], ['plume', 'Plume'], ['stone', 'Stone'],
-        ['arch', 'Stone arch'], ['glass', 'Glass slab'], ['frost', 'Frosted lens']].map(([v, l]) =>
+        ['petal', 'Petal'], ['liquid', 'Liquid'], ['orb', 'Orb'], ['silk', 'Silk'], ['plume', 'Plume'],
+        ['glass', 'Glass slab'], ['frost', 'Frosted lens']].map(([v, l]) =>
         `<option value="${v}"${e.shape === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` + sep +
         `<button class="tbtn" data-act="rotL" title="Turn left">↺</button><button class="tbtn" data-act="rotR" title="Turn right">↻</button>` +
         (e.shape === 'liquid' ? sep + `<button class="tbtn" data-act="reshuffle">New flow</button>` : '');
+    } else if (e.type === 'material') {
+      h += `<select data-set="kind" class="tsel">${Object.entries(Moments.MATERIALS).map(([v, l]) =>
+        `<option value="${v}"${e.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` + sep +
+        seg('soft', !!e.soft, [[false, 'Hard edges'], [true, 'Soft edges']]);
+    } else if (e.type === 'shape') {
+      h += seg('form', e.form || 'blob', [['blob', 'Blob'], ['circle', 'Circle'], ['pill', 'Pill']]) + sep +
+        seg('tint', e.tint || 'iris', Object.entries(Scenes.SHAPE_TINTS));
+    } else if (e.type === 'card') {
+      h += seg('style', e.style || 'frost', [['frost', 'Frosted'], ['light', 'Light'], ['ink', 'Ink'], ['iris', 'Iris'], ['coral', 'Coral']]);
+    } else if (e.type === 'stat') {
+      h += `<span class="tseg">${['left', 'center', 'right'].map(a =>
+        `<button data-set="align" data-v="${a}" class="ic${(e.align || 'left') === a ? ' on' : ''}" title="Align ${a}">${ICON[a]}</button>`).join('')}</span>` + sep +
+        seg('color', e.color || 'auto', Object.entries(Scenes.COLORS));
+    } else if (e.type === 'list') {
+      h += seg('kind', e.kind || 'dots', [['dots', 'Dots'], ['numbers', 'Numbers']]) + sep +
+        seg('color', e.color || 'auto', Object.entries(Scenes.COLORS));
     } else if (e.type === 'glow') {
       h += seg('tint', e.tint || 'iris', [['iris', 'Iris'], ['violet', 'Violet'], ['pink', 'Pink'], ['cyan', 'Cyan'], ['warm', 'Warm']]);
     } else if (e.type === 'count') {
@@ -483,10 +516,10 @@ const Editor = (() => {
     if (ev.target.closest('#addEl')) { ev.stopPropagation(); return togglePop(); }
     const ins = ev.target.closest('[data-ins]');
     if (ins) {
-      const e = Scenes.INSERTS[+ins.dataset.ins].make();
+      const made = [].concat(Scenes.INSERTS[+ins.dataset.ins].make());
       $('pop').hidden = true;
-      Deck.change(() => scene().els.push(e));
-      sel = e.id; renderAll();
+      Deck.change(() => scene().els.push(...made));
+      sel = made[made.length - 1].id; renderAll();
     }
   });
   bar.addEventListener('input', (ev) => {
@@ -499,11 +532,17 @@ const Editor = (() => {
   function togglePop() {
     const pop = $('pop');
     if (!pop.hidden) { pop.hidden = true; return; }
-    pop.innerHTML = Scenes.INSERTS.map((it, i) => `<button class="pcard" data-ins="${i}"><div class="pthumb"></div><b>${Scenes.esc(it.name)}</b></button>`).join('');
+    // Grouped: text, content, media, materials, forms, shapes and light, live.
+    let last = '';
+    pop.innerHTML = Scenes.INSERTS.map((it, i) => {
+      const head = it.group !== last ? `<h4 class="pgroup">${Scenes.esc(it.group)}</h4>` : '';
+      last = it.group;
+      return head + `<button class="pcard" data-ins="${i}"><div class="pthumb"></div><b>${Scenes.esc(it.name)}</b></button>`;
+    }).join('');
     pop.hidden = false;
-    pop.querySelectorAll('.pcard').forEach((c, i) => {
-      const e = Scenes.INSERTS[i].make();
-      Scenes.mount(c.querySelector('.pthumb'), { field: scene().field, footer: false, els: [e] }, { still: true });
+    pop.querySelectorAll('.pcard').forEach(c => {
+      const els = [].concat(Scenes.INSERTS[+c.dataset.ins].make());
+      Scenes.mount(c.querySelector('.pthumb'), { field: scene().field, footer: false, els }, { still: true });
     });
   }
   document.addEventListener('pointerdown', (ev) => {

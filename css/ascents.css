@@ -88,6 +88,9 @@
 .scene.play [data-in] { animation: inUp 1.05s var(--ease) calc(var(--start, 0ms) + var(--o) * 110ms + 180ms) both; }
 .scene.play .el-media[data-in] { animation-name: inMedia; animation-duration: 1.4s; }
 .scene.play .el-sculpture[data-in], .scene.play .el-glow[data-in] { animation-name: inFade; animation-duration: 1.8s; }
+.scene.play .el-material[data-in] { animation: none; }       /* it plays its own entrance */
+.scene.play .el-shape[data-in] { animation-name: inShape; animation-duration: 1.6s; }
+@keyframes inShape { from { opacity: 0; transform: scale(.82); } }
 .scene.play .foot { animation: inFade 1.2s ease calc(var(--start, 0ms) + 200ms) both; }
 @keyframes inUp    { from { opacity: 0; transform: translateY(30px); filter: blur(12px); } }
 @keyframes inMedia { from { opacity: 0; transform: scale(1.035); filter: blur(16px); } }
@@ -130,6 +133,7 @@
 /* Images and video. */
 .el-media { overflow: hidden; }
 .el-media.round { border-radius: 28px; }
+.el-media.circle { border-radius: 50%; }
 .el-media img, .el-media video { width: 100%; height: 100%; display: block; }
 .el-media .ph {
   width: 100%; height: 100%; display: grid; place-items: center; text-align: center;
@@ -174,7 +178,8 @@
 .moments { position: absolute; inset: 0; pointer-events: none; }
 .moments.front { z-index: 5; }
 .scene .el-sculpture, .scene .el-glow { transition: opacity .6s ease; }
-.scene.finale .el-sculpture, .scene.finale .el-glow { opacity: 0 !important; }
+.scene .el-material, .scene .el-shape { transition: opacity .6s ease; }
+.scene.finale .el-sculpture, .scene.finale .el-glow, .scene.finale .el-material, .scene.finale .el-shape { opacity: 0 !important; }
 .moments canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 /* ---------------- Glow ----------------
@@ -214,3 +219,67 @@
 .field-ice i:nth-child(1) { width: 1200px; height: 900px; left: -300px; top: -400px; background: #ffffff; opacity: .9; animation: drift1 44s ease-in-out infinite alternate; }
 .field-ice i:nth-child(2) { width: 1000px; height: 900px; right: -300px; bottom: -420px; background: #bcd6f5; opacity: .55; animation: drift2 52s ease-in-out infinite alternate; }
 .field-ice i:nth-child(3) { width: 800px; height: 700px; left: 700px; top: 200px; background: #e6dcfb; opacity: .35; animation: drift3 60s ease-in-out infinite alternate; }
+
+/* ---------------- Materials ----------------
+   The countdown's organic materials, placed in a box. Soft edges fade
+   the box out so nothing ends on a hard cut. */
+.mat { position: absolute; inset: 0; }
+.mat img, .mat canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mat.live img { opacity: 0; }
+.el-material.soft {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  mask-composite: intersect;
+}
+
+/* ---------------- Soft shapes ----------------
+   One colour, lit like a soft solid: a highlight up top, shade below.
+   The blob slowly changes its outline. */
+.shape { position: absolute; inset: 0; }
+.shape-circle { border-radius: 50%; }
+.shape-pill { border-radius: 9999px; }
+.shape-blob { border-radius: 58% 42% 51% 49% / 46% 56% 44% 54%; animation: morph 18s ease-in-out infinite alternate; }
+@keyframes morph {
+  33%  { border-radius: 43% 57% 38% 62% / 58% 41% 59% 42%; }
+  66%  { border-radius: 61% 39% 55% 45% / 39% 60% 40% 61%; }
+  100% { border-radius: 47% 53% 63% 37% / 52% 38% 62% 48%; }
+}
+.still .shape-blob { animation: none; }
+.shape::after { content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(60% 55% at 32% 26%, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 70%),
+              radial-gradient(70% 60% at 70% 90%, rgba(10, 14, 40, .22), rgba(10, 14, 40, 0) 70%); }
+.t-iris  { background: linear-gradient(150deg, #8fe3ff, #4f7dff 50%, #9b6bff); }
+.t-coral { background: linear-gradient(150deg, #ffd0b8, #ff7f6b 55%, #ff5f9a); }
+.t-mint  { background: linear-gradient(150deg, #d8fff1, #6fe3c4 55%, #38b9c9); }
+.t-sun   { background: linear-gradient(150deg, #fff3b0, #ffc94d 55%, #ff9a3d); }
+.t-lilac { background: linear-gradient(150deg, #f1e4ff, #c3a2ff 55%, #8f7bff); }
+.t-white { background: linear-gradient(150deg, #ffffff, #eef2f8); box-shadow: 0 40px 90px rgba(20, 30, 60, .14); }
+.t-ink   { background: linear-gradient(150deg, #2a3040, #10131a); }
+.t-ink::after { background: radial-gradient(60% 55% at 32% 26%, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 70%); }
+
+/* ---------------- Cards ---------------- */
+.panel { position: absolute; inset: 0; border-radius: 40px; padding: 56px 60px; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 18px; color: #fff; }
+.panel-t { font-size: 56px; line-height: 1.08; letter-spacing: -.01em; white-space: pre-wrap; outline: none; }
+.panel-b { font-size: 30px; line-height: 1.35; opacity: .74; white-space: pre-wrap; outline: none; }
+.panel-frost { background: rgba(255, 255, 255, .1); backdrop-filter: blur(30px) saturate(1.3); }
+.scene.light .panel-frost { background: rgba(255, 255, 255, .6); color: #0f1b2d; }
+.panel-light { background: #fff; color: #0f1b2d; box-shadow: 0 30px 80px rgba(15, 27, 45, .14); }
+.panel-ink { background: #11141b; }
+.panel-iris { background: linear-gradient(150deg, #7fd3ff, #4b7bff 48%, #9a6bff); }
+.panel-coral { background: linear-gradient(150deg, #ffc7ad, #ff7a6b 52%, #ff5c96); }
+
+/* ---------------- Big numbers ---------------- */
+.stat-n { line-height: .95; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat-l { margin-top: .5em; line-height: 1.3; }
+.stat .stat-l { margin-top: 18px; }
+
+/* ---------------- Lists ----------------
+   Soft round dots or quiet numbers; no rules, no lines. */
+.bullets { display: flex; flex-direction: column; gap: .62em; line-height: 1.2; }
+.bullets .li { display: flex; align-items: baseline; gap: .7em; }
+.bullets .li i { flex: none; font-style: normal; }
+.bullets-dots .li i { width: .36em; height: .36em; border-radius: 50%; transform: translateY(-.12em);
+  background: linear-gradient(150deg, #8fe3ff, #4f7dff 55%, #9b6bff); }
+.bullets-numbers .li i { font-size: .62em; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 1.6em; }
+.bullets.raw { display: block; white-space: pre-wrap; }

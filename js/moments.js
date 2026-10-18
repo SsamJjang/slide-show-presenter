@@ -13,7 +13,7 @@
      6  silk fabric drapes down from the top; one band sweeps in low
      5  an inflated cushion swells up behind the digits
      4  soap bubbles float up through both layers
-     3  pebbles drop and settle along the bottom edge
+     3  pearls drop and settle along the bottom edge
      2  candy capsules burst out from behind the digits
      1  glass crystals orbit the digits, passing behind and in front
      0  rainbow silk wipes across the frame
@@ -246,7 +246,9 @@ void bubbles(vec2 p){
     if (front != FRONT) continue;
     float r = front ? .06 + .08*H(k + 40.) : .17 + .2*H(k + 40.);
     float sp = .55 + .5*H(k + 44.);
-    vec2 c = vec2(-1.7 + 3.4*H(k + 41.) + .08*sin(uT*1.3 + k), -1.55 + 1.7*H(k + 43.) + uP*sp*.7 + .5*eo(uP*1.5));
+    // rising forever: once off the top a bubble comes back in from below
+    float y = mod(.15 + 1.7*H(k + 43.) + uP*sp*.7 + .5*eo(uP*1.5), 3.6) - 1.8;
+    vec2 c = vec2(-1.7 + 3.4*H(k + 41.) + .08*sin(uT*1.3 + k), y);
     float sd = blob(p, c, vec2(r), 0., k*.3);
     if (sd > px) continue;
     float fr = pow(1. - N.z, 1.6);
@@ -255,22 +257,22 @@ void bubbles(vec2 p){
     put(sd, col + vec3(s), clamp(.22 + .7*fr + s, 0., 1.));
   }
 }
-/* 3 — pebbles drop from above and settle along the bottom edge */
-void pebbles(vec2 p){
+/* 3 — pearls drop from above and settle along the bottom edge */
+void pearls(vec2 p){
   for (int i = 0; i < 9; i++) {
     float k = float(i);
     bool front = i < 7;
     if (front != FRONT) continue;
-    vec2 ab = front ? vec2(.24 + .1*H(k + 53.), .15 + .05*H(k + 54.)) : vec2(.3, .2);
-    vec2 rest = front ? vec2(-1.62 + k*.54 + .1*H(k + 50.), -1. + ab.y*.75) : vec2(i == 7 ? -1.45 : 1.48, i == 7 ? .1 : -.25);
+    float r = front ? .15 + .07*H(k + 53.) : .22;
+    vec2 rest = front ? vec2(-1.62 + k*.54 + .1*H(k + 50.), -1. + r*.8) : vec2(i == 7 ? -1.45 : 1.48, i == 7 ? .1 : -.25);
     float x = uP*1.15 - H(k + 52.)*.35;
     float y = x <= 0. ? 1.8 : rest.y + (1.8 - rest.y)*exp(-4.*x)*abs(cos(7.*x));
-    float sd = blob(p, vec2(rest.x, y), ab, (H(k + 55.) - .5)*.6 + .2*exp(-3.*max(x, 0.)), k + 9.);
+    float sd = blob(p, vec2(rest.x, y), vec2(r), 0., k + 9.);
     if (sd > px) continue;
     vec3 n = N;
-    float wrap = clamp(.35 + .65*dot(n, normalize(LD)), 0., 1.);
-    float pool = smoothstep(.2, .8, .5 + .5*sin(dot(p, vec2(.4, 1.2))*3. - uT*.6 + k));
-    put(sd, vec3(.94, .945, .96)*(.25 + .75*wrap) + mix(hue(dot(p, vec2(.5, .2)) + uT*.05), vec3(1.), .12)*pool*(.55 + .4*wrap)*.75, 1.);
+    // pearlescent: white with a soft rainbow sheen that follows the curve
+    vec3 base = mix(vec3(.97, .96, .98), hue(n.x*.35 + n.y*.25 + k*.13 + uT*.03), .22 + .2*(1. - n.z));
+    put(sd, lit(base, n, 60., .85), 1.);
   }
 }
 /* 2 — candy capsules burst out from behind the digits and come
@@ -343,14 +345,19 @@ void main(){
   px = 2./uRes.y;
   FRONT = LAYER > .5;
   acc = vec4(0.);
+#ifdef BOTH
+  FRONT = false; MOMENT(p);         // a placed material: both layers in one
+  FRONT = true; MOMENT(p);
+#else
   MOMENT(p);
+#endif
   gl_FragColor = clamp(acc, 0., 1.);
 }`;
 
   /* One small program per second and layer, rather than one shader with
      every moment in it: each runs lighter, and none of them is compiled
      at the moment it is first needed. */
-  const MOMENT = ['rainbow', 'crystals', 'capsules', 'pebbles', 'bubbles', 'cushion', 'fabric', 'blooms', 'ribbons', 'sprinkles'];
+  const MOMENT = ['rainbow', 'crystals', 'capsules', 'pearls', 'bubbles', 'cushion', 'fabric', 'blooms', 'ribbons', 'sprinkles'];
   const VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
 
   /* Builds every program in the background as soon as the countdown is on
@@ -441,5 +448,93 @@ void main(){
     };
   }
 
-  return { mount };
+  /* ---------- the same materials, as elements you place ----------
+     Each draws both layers in one canvas, inside its own box. On stage it
+     sits settled; presenting, it plays its entrance as it arrives. */
+  const MATERIALS = {
+    ribbons: 'Silk ribbons', fabric: 'Silk fabric', rainbow: 'Rainbow silk', bubbles: 'Bubbles', blooms: 'Blooms',
+    cushion: 'Cushion', capsules: 'Capsules', crystals: 'Crystals', sprinkles: 'Sprinkles', pearls: 'Pearls',
+  };
+  function program(gl, kind) {
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const fs = sh(gl.FRAGMENT_SHADER, `#define MOMENT ${MATERIALS[kind] ? kind : 'ribbons'}
+#define LAYER 1.
+#define BOTH
+` + FRAG);
+    const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VERT)); gl.attachShader(pr, fs); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { console.warn('[moments]', gl.getShaderInfoLog(fs)); return null; }
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const U = {}; ['uRes', 'uT', 'uP'].forEach(n => U[n] = gl.getUniformLocation(pr, n));
+    return U;
+  }
+  const fitCanvas = (canvas, w, h, cap) => {
+    const k = Math.min(1, cap / Math.max(w, h, 1));
+    canvas.width = Math.max(2, Math.round(w * k)); canvas.height = Math.max(2, Math.round(h * k));
+  };
+
+  function material(canvas, kind, { intro = false, delay = 0 } = {}) {
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+    if (!gl) return { destroy() {}, resize() {} };
+    const U = program(gl, kind);
+    if (!U) return { destroy() {}, resize() {} };
+    const resize = () => fitCanvas(canvas, canvas.clientWidth || 600, canvas.clientHeight || 400, 1024);
+    resize();
+    const t0 = performance.now();
+    const since = intro ? t0 + delay : t0 - 3000;      // settled unless it is arriving
+    let raf = 0;
+    function frame(now) {
+      raf = requestAnimationFrame(frame);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform2f(U.uRes, canvas.width, canvas.height);
+      gl.uniform1f(U.uT, (now - t0) / 1000);
+      gl.uniform1f(U.uP, Math.max(0, (now - since) / 1000));
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    raf = requestAnimationFrame(frame);
+    canvas.addEventListener('webglcontextlost', () => {
+      cancelAnimationFrame(raf); canvas.style.display = 'none'; canvas.parentElement?.classList.remove('live');
+    });
+    return {
+      resize,
+      destroy() {
+        cancelAnimationFrame(raf);
+        canvas.style.display = 'none';
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+      },
+    };
+  }
+
+  /* Stills for thumbnails: one offscreen context per material, cached. */
+  const SC = {}, cache = new Map();
+  function still(kind, w, h) {
+    const key = [kind, Math.round(w), Math.round(h)].join('|');
+    if (cache.has(key)) return cache.get(key);
+    let url = '';
+    try {
+      if (!SC[kind]) {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl', { premultipliedAlpha: true, alpha: true, preserveDrawingBuffer: true });
+        SC[kind] = gl && { c, gl, U: program(gl, kind) };
+      }
+      const S = SC[kind];
+      if (S && S.U) {
+        fitCanvas(S.c, w, h, 560);
+        S.gl.viewport(0, 0, S.c.width, S.c.height);
+        S.gl.clearColor(0, 0, 0, 0); S.gl.clear(S.gl.COLOR_BUFFER_BIT);
+        S.gl.uniform2f(S.U.uRes, S.c.width, S.c.height);
+        S.gl.uniform1f(S.U.uT, 2); S.gl.uniform1f(S.U.uP, 3);
+        S.gl.drawArrays(S.gl.TRIANGLES, 0, 3);
+        url = S.c.toDataURL('image/webp', .9);
+      }
+    } catch (e) { url = ''; }
+    cache.set(key, url);
+    return url;
+  }
+
+  return { mount, material, still, MATERIALS };
 })();

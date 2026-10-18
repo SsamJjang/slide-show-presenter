@@ -15,6 +15,12 @@
      sculpture  a live, glossy organic form: twist, ribbon, lens,
                 pebble, petal — or liquid (bodies that merge) and orb
      glow       a soft bloom of coloured light
+     material   a placed organic material: silk ribbons, fabric, bubbles,
+                blooms, cushion, capsules, crystals, sprinkles, pearls
+     shape      a soft, lit organic shape in one colour: blob, circle, pill
+     card       a rounded panel with a title and a line of text
+     stat       a big number with its label
+     list       bulleted or numbered lines
      count      countdown numerals: smooth glossy blue
      pill       Live Demo / soft prompt / device tag
 
@@ -51,6 +57,11 @@ const Scenes = (() => {
     count: (text, x, y, w, more = {}) => ({ id: uid(), type: 'count', text, x, y, w, size: 300, ...more }),
     glow: (x, y, w, h, more = {}) => ({ id: uid(), type: 'glow', tint: 'iris', x, y, w, h, ...more }),
     pill: (kind, text, x, y, more = {}) => ({ id: uid(), type: 'pill', kind, text, x, y, ...more }),
+    material: (kind, x = 0, y = 0, w = 1920, h = 1080, more = {}) => ({ id: uid(), type: 'material', kind, x, y, w, h, ...more }),
+    shape: (form, tint, x, y, w, h, more = {}) => ({ id: uid(), type: 'shape', form, tint, x, y, w, h, ...more }),
+    card: (text, sub, x, y, w, h, more = {}) => ({ id: uid(), type: 'card', style: 'frost', text, sub, x, y, w, h, ...more }),
+    stat: (text, sub, x, y, w, more = {}) => ({ id: uid(), type: 'stat', text, sub, x, y, w, size: 220, align: 'left', color: 'auto', ...more }),
+    list: (text, x, y, w, more = {}) => ({ id: uid(), type: 'list', kind: 'dots', text, x, y, w, size: 44, color: 'auto', ...more }),
   };
 
   /* ---------- starting layouts ----------
@@ -65,12 +76,29 @@ const Scenes = (() => {
         E.count('05:00', -120, 200, 2160, { size: 720, tone: 'ink' }),
         E.sculpture(-200, 340, 2320, 900, { shape: 'silk', roll: 78 }),
         E.sculpture(1180, -160, 900, 700, { shape: 'plume', roll: 30 })] },
-    openerPrism: { name: 'Opener · prism stone', group: 'Open', field: 'ice', fx: 'open', hint: 'Connect 2022: white stone in moving prism light.',
+    openerPrism: { name: 'Opener · daylight glass', group: 'Open', field: 'ice', fx: 'open', hint: 'Frosted glass in daylight, title on the left.',
       els: () => [
-        E.sculpture(780, 60, 1240, 1100, { shape: 'stone', roll: 0 }),
-        E.sculpture(-260, 420, 1100, 900, { shape: 'arch', roll: -8 }),
+        E.sculpture(820, 80, 1200, 1000, { shape: 'glass', roll: 0 }),
+        E.sculpture(-240, 460, 1000, 860, { shape: 'frost', roll: -20 }),
         E.text('APEX\nAscents', 'display', 150, 180, 900),
         E.text('2027', 'heading', 156, 560, 600, { color: 'muted' })] },
+    bubblesOpen: { name: 'Bubbles', group: 'Open', field: 'ice', hint: 'Soap bubbles drift up behind the title.',
+      els: () => [E.material('bubbles'), E.text('APEX Ascents', 'display', 0, 440, 1920, { align: 'center' })] },
+    stats:     { name: 'Big numbers', group: 'Talk', field: 'navy',
+      els: () => [
+        E.stat('12k', 'students on APEX', 160, 330, 500), E.stat('340', 'lounges this month', 720, 330, 500),
+        E.stat('98%', 'say it helps them find their people', 1280, 330, 520)] },
+    cards:     { name: 'Three cards', group: 'Talk', field: 'navy',
+      els: () => [
+        E.text('What’s new', 'heading', 160, 150, 1200),
+        E.card('Lounges', 'Rooms for every club, class and interest.', 160, 300, 500, 600, { style: 'iris' }),
+        E.card('Polls', 'Ask anything. See answers live.', 710, 300, 500, 600),
+        E.card('Chat', 'Fast, private, and built for groups.', 1260, 300, 500, 600)] },
+    agenda:    { name: 'Agenda', group: 'Talk', field: 'navy',
+      els: () => [
+        E.shape('blob', 'coral', 1160, 180, 760, 720),
+        E.text('Today', 'title', 160, 200, 900),
+        E.list('Where we are\nWhat’s new\nLive demo\nWhat’s next', 166, 420, 900, { kind: 'numbers', size: 52 })] },
     opener:    { name: 'Opener', group: 'Open', field: 'navy', fx: 'open', hint: 'Liquid colour swells and opens onto this title.',
       els: () => [
         E.sculpture(560, 150, 900, 880, { roll: 34 }),
@@ -122,6 +150,8 @@ const Scenes = (() => {
         E.pill('tag', 'APEX for iPhone', 872, 122)] },
     video:     { name: 'Full-bleed video', group: 'Demo', field: 'black', footer: false,
       els: () => [E.media(0, 0, 1920, 1080, { fit: 'cover' })] },
+    rainbowClose: { name: 'Rainbow close', group: 'Close', field: 'ice',
+      els: () => [E.material('rainbow', 0, 520, 1920, 640, { soft: true }), E.text('See you next time', 'display', 0, 250, 1920, { align: 'center' })] },
     thanks:    { name: 'Thank you', group: 'Close', field: 'navy',
       els: () => [
         E.sculpture(-60, 400, 2040, 760, { shape: 'ribbon', roll: 96 }),
@@ -130,34 +160,58 @@ const Scenes = (() => {
 
   /* ---------- what "+ Element" offers ---------- */
   const INSERTS = [
-    { name: 'Display', make: () => E.text('Display', 'display', 160, 420, 1400) },
-    { name: 'Title', make: () => E.text('A title', 'title', 160, 440, 1400) },
-    { name: 'Statement', make: () => E.text('A statement, centred.', 'statement', 0, 480, 1920, { align: 'center' }) },
-    { name: 'Heading', make: () => E.text('A heading', 'heading', 160, 460, 1200) },
-    { name: 'Body', make: () => E.text('Supporting text, in one or two lines.', 'body', 160, 500, 1000, { color: 'muted' }) },
-    { name: 'Caption', make: () => E.text('Caption', 'caption', 160, 520, 600) },
-    { name: 'Number', make: () => E.text('01', 'number', 0, 400, 1920, { align: 'center', color: 'muted' }) },
-    { name: 'Icon + word', make: () => E.lockup('Feature', 'spark', 0, 482, 1920) },
-    { name: 'Image or video', make: () => E.media(560, 240, 800, 600, { round: true, fit: 'cover' }) },
-    { name: 'Sculpture', make: () => E.sculpture(560, 140, 800, 800) },
-    { name: 'Ribbon', make: () => E.sculpture(260, 200, 1400, 700, { shape: 'ribbon', roll: 92 }) },
-    { name: 'Lens', make: () => E.sculpture(660, 240, 600, 600, { shape: 'lens', roll: 20 }) },
-    { name: 'Pebble', make: () => E.sculpture(660, 240, 600, 600, { shape: 'pebble', roll: 10 }) },
-    { name: 'Petal', make: () => E.sculpture(560, 140, 800, 800, { shape: 'petal', roll: 40 }) },
-    { name: 'Liquid', make: () => E.sculpture(460, 140, 1000, 800, { shape: 'liquid', roll: 0, seed: 1 }) },
-    { name: 'Orb', make: () => E.sculpture(760, 340, 400, 400, { shape: 'orb', roll: 0 }) },
-    { name: 'Glow', make: () => E.glow(460, 140, 1000, 800) },
-    { name: 'Silk', make: () => E.sculpture(0, 240, 1920, 760, { shape: 'silk', roll: 80 }) },
-    { name: 'Plume', make: () => E.sculpture(560, 140, 800, 800, { shape: 'plume', roll: 30 }) },
-    { name: 'Stone', make: () => E.sculpture(560, 140, 800, 800, { shape: 'stone', roll: 0 }) },
-    { name: 'Stone arch', make: () => E.sculpture(460, 140, 1000, 800, { shape: 'arch', roll: 0 }) },
-    { name: 'Glass slab', make: () => E.sculpture(460, 140, 1000, 800, { shape: 'glass', roll: 0 }) },
-    { name: 'Frosted lens', make: () => E.sculpture(660, 240, 600, 600, { shape: 'frost', roll: 20 }) },
-    { name: 'Countdown', make: () => E.count('05:00', 0, 380, 1920) },
-    { name: 'Live pill', make: () => E.pill('live', 'Live Demo', 64, 56) },
-    { name: 'Prompt pill', make: () => E.pill('soft', 'Ask anything…', 800, 500) },
-    { name: 'Tag', make: () => E.pill('tag', 'APEX for iPhone', 860, 140) },
+    // Text
+    { group: 'Text', name: 'Display', make: () => E.text('Display', 'display', 160, 420, 1400) },
+    { group: 'Text', name: 'Title', make: () => E.text('A title', 'title', 160, 440, 1400) },
+    { group: 'Text', name: 'Statement', make: () => E.text('A statement, centred.', 'statement', 0, 480, 1920, { align: 'center' }) },
+    { group: 'Text', name: 'Heading', make: () => E.text('A heading', 'heading', 160, 460, 1200) },
+    { group: 'Text', name: 'Body', make: () => E.text('Supporting text, in one or two lines.', 'body', 160, 500, 1000, { color: 'muted' }) },
+    { group: 'Text', name: 'Caption', make: () => E.text('Caption', 'caption', 160, 520, 600) },
+    { group: 'Text', name: 'Number', make: () => E.text('01', 'number', 0, 400, 1920, { align: 'center', color: 'muted' }) },
+    { group: 'Text', name: 'Icon + word', make: () => E.lockup('Feature', 'spark', 0, 482, 1920) },
+    // Content
+    { group: 'Content', name: 'Card', make: () => E.card('A card', 'One line about it, kept short.', 660, 240, 600, 600) },
+    { group: 'Content', name: 'Light card', make: () => E.card('A card', 'One line about it, kept short.', 660, 240, 600, 600, { style: 'light' }) },
+    { group: 'Content', name: 'Colour card', make: () => E.card('A card', 'One line about it, kept short.', 660, 240, 600, 600, { style: 'iris' }) },
+    { group: 'Content', name: 'Big number', make: () => E.stat('12k', 'what the number means', 660, 380, 700) },
+    { group: 'Content', name: 'Bullet list', make: () => E.list('First point\nSecond point\nThird point', 560, 360, 900) },
+    { group: 'Content', name: 'Numbered list', make: () => E.list('First step\nSecond step\nThird step', 560, 360, 900, { kind: 'numbers' }) },
+    { group: 'Content', name: 'Quote', make: () => [
+      E.text('“Something someone\nsaid, worth repeating.”', 'statement', 0, 400, 1920, { align: 'center' }),
+      E.text('Their name, their role', 'body', 0, 650, 1920, { align: 'center', color: 'muted' })] },
+    { group: 'Content', name: 'Speaker', make: () => [
+      E.media(160, 300, 480, 480, { fit: 'cover', round: 'circle' }),
+      E.text('Your Name', 'title', 720, 400, 1100), E.text('Your role', 'body', 726, 560, 900, { color: 'muted' })] },
+    // Media
+    { group: 'Media', name: 'Image or video', make: () => E.media(560, 240, 800, 600, { round: true, fit: 'cover' }) },
+    { group: 'Media', name: 'Circle photo', make: () => E.media(710, 290, 500, 500, { round: 'circle', fit: 'cover' }) },
+    { group: 'Media', name: 'Full-bleed', make: () => E.media(0, 0, 1920, 1080, { fit: 'cover' }) },
+    // Materials: the countdown's organic materials, placed anywhere
+    ...Object.entries(Moments.MATERIALS).map(([kind, name]) => ({ group: 'Materials', name, make: () => E.material(kind) })),
+    // Forms
+    { group: 'Forms', name: 'Sculpture', make: () => E.sculpture(560, 140, 800, 800) },
+    { group: 'Forms', name: 'Ribbon', make: () => E.sculpture(260, 200, 1400, 700, { shape: 'ribbon', roll: 92 }) },
+    { group: 'Forms', name: 'Lens', make: () => E.sculpture(660, 240, 600, 600, { shape: 'lens', roll: 20 }) },
+    { group: 'Forms', name: 'Pebble', make: () => E.sculpture(660, 240, 600, 600, { shape: 'pebble', roll: 10 }) },
+    { group: 'Forms', name: 'Petal', make: () => E.sculpture(560, 140, 800, 800, { shape: 'petal', roll: 40 }) },
+    { group: 'Forms', name: 'Silk', make: () => E.sculpture(0, 240, 1920, 760, { shape: 'silk', roll: 80 }) },
+    { group: 'Forms', name: 'Plume', make: () => E.sculpture(560, 140, 800, 800, { shape: 'plume', roll: 30 }) },
+    { group: 'Forms', name: 'Glass slab', make: () => E.sculpture(460, 140, 1000, 800, { shape: 'glass', roll: 0 }) },
+    { group: 'Forms', name: 'Frosted lens', make: () => E.sculpture(660, 240, 600, 600, { shape: 'frost', roll: 20 }) },
+    { group: 'Forms', name: 'Liquid', make: () => E.sculpture(460, 140, 1000, 800, { shape: 'liquid', roll: 0, seed: 1 }) },
+    { group: 'Forms', name: 'Orb', make: () => E.sculpture(760, 340, 400, 400, { shape: 'orb', roll: 0 }) },
+    // Shapes and light
+    { group: 'Shapes & light', name: 'Soft blob', make: () => E.shape('blob', 'iris', 660, 240, 600, 600) },
+    { group: 'Shapes & light', name: 'Soft circle', make: () => E.shape('circle', 'coral', 710, 290, 500, 500) },
+    { group: 'Shapes & light', name: 'Soft pill', make: () => E.shape('pill', 'mint', 560, 420, 800, 240) },
+    { group: 'Shapes & light', name: 'Glow', make: () => E.glow(460, 140, 1000, 800) },
+    // Live
+    { group: 'Live', name: 'Countdown', make: () => E.count('05:00', 0, 380, 1920) },
+    { group: 'Live', name: 'Live pill', make: () => E.pill('live', 'Live Demo', 64, 56) },
+    { group: 'Live', name: 'Prompt pill', make: () => E.pill('soft', 'Ask anything…', 800, 500) },
+    { group: 'Live', name: 'Tag', make: () => E.pill('tag', 'APEX for iPhone', 860, 140) },
   ];
+  const SHAPE_TINTS = { iris: 'Iris', coral: 'Coral', mint: 'Mint', sun: 'Sun', lilac: 'Lilac', white: 'White', ink: 'Ink' };
 
   /* ---------- element rendering ---------- */
 
@@ -199,6 +253,21 @@ const Scenes = (() => {
         const still = Sculpture.still(opts, e.w, e.h);
         return `<div class="sculpt" data-sculpt="${esc(JSON.stringify(opts))}">${still ? `<img src="${still}" alt="">` : ''}</div>`;
       }
+      case 'material': {
+        const still = Moments.still(e.kind, e.w, e.h);
+        return `<div class="mat" data-mat="${esc(e.kind)}">${still ? `<img src="${still}" alt="">` : ''}</div>`;
+      }
+      case 'shape': return `<div class="shape shape-${e.form || 'blob'} t-${e.tint || 'iris'}"></div>`;
+      case 'card':
+        return `<div class="panel panel-${e.style || 'frost'}"><div class="panel-t" data-edit="text">${esc(e.text)}</div>` +
+          `<div class="panel-b" data-edit="sub">${esc(e.sub)}</div></div>`;
+      case 'stat': {
+        const s = e.size || 220;
+        return `<div class="stat" style="text-align:${e.align || 'left'}">` +
+          `<div class="stat-n txt c-${e.color || 'auto'}" data-edit="text" style="font-size:${s}px">${esc(e.text)}</div>` +
+          `<div class="stat-l txt c-muted" data-edit="sub" style="font-size:${Math.max(22, Math.round(s * .16))}px">${esc(e.sub)}</div></div>`;
+      }
+      case 'list': return listHTML(e);
       case 'count': return countSVG(e);
       case 'glow': return `<div class="glow g-${e.tint || 'iris'}"></div>`;
       case 'pill':
@@ -206,6 +275,14 @@ const Scenes = (() => {
           `<span data-edit>${esc(e.text)}</span></div>`;
     }
     return '';
+  }
+
+  /* A list: one line per item, a soft dot or its number in front. */
+  function listHTML(e) {
+    const items = String(e.text || '').split('\n');
+    return `<div class="bullets bullets-${e.kind || 'dots'} txt c-${e.color || 'auto'}" data-edit="text" style="font-size:${e.size || 44}px">` +
+      items.map((t, i) => `<div class="li"><i>${e.kind === 'numbers' ? String(i + 1).padStart(2, '0') : ''}</i><span>${esc(t)}</span></div>`).join('') +
+      `</div>`;
   }
 
   /* Countdown numerals: a smooth glossy blue body (cyan crown, royal
@@ -238,13 +315,14 @@ const Scenes = (() => {
 
   /* Arrival order: graphics first, then everything else in reading order. */
   function order(els) {
-    const art = (e) => ['sculpture', 'glow'].includes(e.type) ? 1 : 0;
+    const art = (e) => ['sculpture', 'glow', 'material', 'shape'].includes(e.type) ? 1 : 0;
     return [...els].sort((a, b) => (art(b) - art(a)) || (Math.round(a.y / 40) - Math.round(b.y / 40)) || (a.x - b.x));
   }
 
   function elHTML(e, ord, still = false) {
-    const media = e.type === 'media' ? (e.round ? ' round' : '') + (Media.url(e.ref) ? '' : ' empty') : '';
-    return `<div class="el el-${e.type}${media}" data-id="${e.id}" data-in style="--o:${ord.indexOf(e)};${box(e)}">${body(e, still)}</div>`;
+    const media = e.type === 'media' ? (e.round === 'circle' ? ' circle' : e.round ? ' round' : '') + (Media.url(e.ref) ? '' : ' empty') : '';
+    const soft = e.type === 'material' && e.soft ? ' soft' : '';
+    return `<div class="el el-${e.type}${media}${soft}" data-id="${e.id}" data-in style="--o:${ord.indexOf(e)};${box(e)}">${body(e, still)}</div>`;
   }
 
   function html(scene, { still = false } = {}) {
@@ -276,5 +354,5 @@ const Scenes = (() => {
 
   const FIELDS = [['navy', 'Navy'], ['ice', 'Ice'], ['pale', 'Pale'], ['pastel', 'Daylight'], ['grey', 'Grey'], ['black', 'Black'], ['white', 'White']];
 
-  return { LAYOUTS, INSERTS, TEXT_STYLES, COLORS, FIELDS, E, html, elHTML, body, order, mount, make, esc, uid };
+  return { LAYOUTS, INSERTS, TEXT_STYLES, COLORS, SHAPE_TINTS, FIELDS, E, html, elHTML, body, order, mount, make, esc, uid };
 })();

@@ -17,11 +17,19 @@ const Deck = (() => {
     };
   }
 
+  /* The stone and the arch were retired; decks that used them get the
+     nearest smooth forms instead. */
+  const RETIRED = { stone: 'pebble', arch: 'petal' };
+  function migrate(d) {
+    d.scenes.forEach(s => (s.els || []).forEach(e => { if (e.type === 'sculpture' && RETIRED[e.shape]) e.shape = RETIRED[e.shape]; }));
+    return d;
+  }
+
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
       const d = raw && JSON.parse(raw);
-      if (d && d.v === 2 && Array.isArray(d.scenes) && d.scenes.length) return (deck = d);
+      if (d && d.v === 2 && Array.isArray(d.scenes) && d.scenes.length) return (deck = migrate(d));
     } catch (e) { /* unreadable: start fresh */ }
     return (deck = starter());
   }
@@ -91,7 +99,7 @@ const Deck = (() => {
     }
     delete d.media;
     d.scenes.forEach(s => (s.els || []).forEach(e => { if (map[e.ref]) e.ref = map[e.ref]; }));
-    replace(d);
+    replace(migrate(d));
   }
 
   return {

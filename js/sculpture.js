@@ -10,7 +10,7 @@
 
    opts: { shape, roll: degrees, intro: bool }
    shapes: twist ribbon lens pebble petal (gloss) · silk plume (2024 silk)
-           stone arch (2022 stone in prism light) · glass frost (frosted glass)
+           glass frost (frosted glass)
            liquid orb (merging liquid)
    ============================================================ */
 
@@ -25,9 +25,7 @@ const Sculpture = (() => {
     // Connect 2024: silk
     silk:   { w: .6,  t: .05, tw: 2.6, bend: 1.7, mat: 2 },
     plume:  { w: .7,  t: .12, tw: 1.4, bend: 2.2, mat: 2 },
-    // Connect 2022: stone in prism light, frosted glass
-    stone:  { w: 0, t: 0, tw: 0, bend: 0, kind: 1, mat: 1 },
-    arch:   { w: 0, t: 0, tw: 0, bend: 0, kind: 2, mat: 1 },
+    // frosted glass
     glass:  { w: 0, t: 0, tw: 0, bend: 0, kind: 3, mat: 3 },
     frost:  { w: .78, t: .3, tw: .9, bend: .5, mat: 3 },
   };
@@ -36,8 +34,8 @@ const Sculpture = (() => {
 precision highp float;
 uniform vec2 uRes; uniform float uTime, uRoll, uAlpha, uSize;
 uniform vec4 uShape;        // twisted forms: width, thickness, twist, bend
-uniform float uKind;        // 0 twisted form · 1 rock · 2 arch · 3 slab
-uniform float uMat;         // 0 gloss · 1 stone + prism light · 2 silk · 3 frosted glass
+uniform float uKind;        // 0 twisted form · 3 slab
+uniform float uMat;         // 0 gloss · 2 silk · 3 frosted glass
 mat2 R(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
 float hash(vec3 p){ p = fract(p*.3183099 + .1); p *= 17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -47,11 +45,6 @@ float noise(vec3 x){
              mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x), mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
 }
 float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a*noise(p); p *= 2.03; a *= .5; } return s; }
-float fbm2(vec3 p){ return .5*noise(p) + .25*noise(p*2.03) + .094; }   // the first two octaves, same mean
-/* Stone is marched against its smooth two-octave shape and only takes its
-   fine weathering where the ray lands: four noise layers at every step of
-   every ray made it the slowest thing in the deck by ten times. */
-bool FINE = true;
 
 vec3 L;   // surface coordinates for colouring: across, along, depth
 float sdBox(vec3 p, vec3 b, float r){ vec3 q = abs(p) - b + r; return length(max(q,0.)) + min(max(q.x,max(q.y,q.z)),0.) - r; }
@@ -73,23 +66,6 @@ float map(vec3 p){
     L = vec3(clamp(p.x/bx, -1., 1.), y, e.y);
     return d*.6;
   }
-  if (uKind < 1.5) {                       // rock: a weathered, rounded stone
-    p.xz = R(tt*.08)*p.xz; p.xy = R(.2)*p.xy;
-    vec3 q = p / vec3(.95, .72, .8);
-    float d = (length(q) - 1.)*.72;
-    d += FINE ? (fbm(p*2.2) - .5)*.22 + (noise(p*7.) - .5)*.03 : (fbm2(p*2.2) - .5)*.22;
-    L = vec3(p.x, p.y, p.z);
-    return d*(FINE ? .55 : .8);
-  }
-  if (uKind < 2.5) {                       // arch: a bent stone limb
-    p.xz = R(sin(tt*.15)*.35)*p.xz;
-    vec2 q = vec2(length(p.xy) - .78, p.z);
-    float d = length(q / vec2(1., 1.15)) - .25;
-    d = max(d, -p.y - .35);
-    d += FINE ? (fbm(p*3.) - .5)*.08 + (noise(p*9.) - .5)*.018 : (fbm2(p*3.) - .5)*.08;
-    L = vec3(atan(p.y, p.x), length(p.xy), p.z);
-    return d*(FINE ? .6 : .85);
-  }
   // slab: a thick rounded pane, slowly tilting
   p.xz = R(.5 + sin(tt*.17)*.25)*p.xz; p.yz = R(-.35 + sin(tt*.13)*.12)*p.yz;
   float d = sdBox(p, vec3(.95, .62, .07), .06);
@@ -105,15 +81,6 @@ vec3 pal(float t){
   vec3 a = t<1.?c0:t<2.?c1:t<3.?c2:t<4.?c3:c4;
   vec3 b = t<1.?c1:t<2.?c2:t<3.?c3:t<4.?c4:c0;
   return mix(a, b, smoothstep(.15, .85, fract(t)));
-}
-/* Prism light, as projected across the stone in the 2022 open: saturated
-   bands of spectrum that drift slowly over a white surface. */
-vec3 prism(float t){
-  t = fract(t)*6.;
-  vec3 c0 = vec3(.15,.25,1.), c1 = vec3(.95,.2,.85), c2 = vec3(1.,.3,.25), c3 = vec3(1.,.85,.2), c4 = vec3(.2,.95,.55), c5 = vec3(.2,.85,1.);
-  vec3 a = t<1.?c0:t<2.?c1:t<3.?c2:t<4.?c3:t<5.?c4:c5;
-  vec3 b = t<1.?c1:t<2.?c2:t<3.?c3:t<4.?c4:t<5.?c5:c0;
-  return mix(a, b, smoothstep(0., 1., fract(t)));
 }
 /* Silk, as in the 2024 countdown: coral, pink, peach and teal. */
 vec3 silk(float t){
@@ -135,21 +102,10 @@ void main(){
     float t = 1.4, dm = 1e9, tm = 1.4; bool hit = false;
     float px = 3.2/(uRes.y*uSize);
     // Only march inside a sphere around the form; rays that miss it skip.
-    bool rock = uKind > .5 && uKind < 2.5;
-    float rb = rock ? 1.32 : 1.75;
+    float rb = 1.75;
     float b = dot(ro, rd), hh = b*b - dot(ro, ro) + rb*rb;
     float t1 = -1.;
     if (hh > 0.) { t = max(1.4, -b - sqrt(hh)); t1 = -b + sqrt(hh); }
-    if (uKind > .5 && uKind < 1.5 && t1 > 0.) {
-      // the stone fits a slightly swollen ellipsoid: start right at its skin
-      vec3 o = ro, dd = rd;
-      o.xz = R(uTime*.08)*o.xz; o.xy = R(.2)*o.xy; dd.xz = R(uTime*.08)*dd.xz; dd.xy = R(.2)*dd.xy;
-      vec3 qo = o/vec3(.95, .72, .8), qd = dd/vec3(.95, .72, .8);
-      float qa = dot(qd, qd), qb = dot(qo, qd), qh = qb*qb - qa*(dot(qo, qo) - 1.44);
-      if (qh > 0.) { t = max(t, (-qb - sqrt(qh))/qa); t1 = min(t1, (-qb + sqrt(qh))/qa); }
-      else t1 = -1.;
-    }
-    FINE = !rock;
     for (int i = 0; i < 110; i++) {
       if (t > t1) break;
       float h = map(ro + rd*t);
@@ -157,9 +113,6 @@ void main(){
       if (h < .0008) { hit = true; tm = t; break; }
       t += h;
     }
-    FINE = true;
-    if (rock && hit)                    // settle onto the detailed surface
-      for (int i = 0; i < 2; i++) tm += map(ro + rd*tm);
     // Silk gets a softer, feathered edge; everything else a clean one.
     float soft = uMat > 1.5 && uMat < 2.5 ? 2.2 : .6;
     float cov = hit ? 1. : clamp(1. - dm/(px*soft), 0., 1.);
@@ -174,16 +127,6 @@ void main(){
       if (uMat < .5) {                                  // gloss
         vec3 base = pal(L.x*.32 + L.y*.16 + fr*.35 + uTime*.012);
         col = base*(.48 + .72*dif) + vec3(1.)*sp*.75 + mix(base, vec3(1.), .5)*fr*.5;
-      } else if (uMat < 1.5) {                          // stone + prism light
-        float grain = .9 + .1*noise(p*18.);
-        vec3 stone = vec3(.93, .94, .96)*grain;
-        float wrap = clamp(.35 + .65*dot(n, l), 0., 1.);
-        vec3 ld = normalize(vec3(.8, .25, .3));
-        float band = dot(p, ld)*1.1 + uTime*.06;
-        float pool = smoothstep(.15, .85, .5 + .5*sin(dot(p, vec3(.3, 1.1, .4))*2.2 - uTime*.35));
-        vec3 light = prism(band)*pool;
-        col = stone*(.22 + .78*wrap) + light*(.8 + .3*wrap)*1.12;
-        col = mix(col, col*.86, (1. - wrap)*.4);
       } else if (uMat < 2.5) {                          // silk
         float fib = fbm(vec3(L.x*14., L.y*2., uTime*.05));
         vec3 base = silk(L.y*.35 + L.x*.12 + uTime*.015);

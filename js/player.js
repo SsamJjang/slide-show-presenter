@@ -61,6 +61,15 @@ const Player = (() => {
       else start();
     });
 
+    // Placed materials play their own entrance as they arrive, in reading order.
+    slot.querySelectorAll('.mat[data-mat]').forEach(box => {
+      const o = parseFloat(box.parentElement.style.getPropertyValue('--o')) || 0;
+      const c = document.createElement('canvas');
+      box.appendChild(c);
+      ctrls.push(Moments.material(c, box.dataset.mat, { intro: true, delay: (opener ? 2700 : 0) + 180 + o * 110 }));
+      box.classList.add('live');
+    });
+
     // A scene with a single video plays it with sound; several play muted.
     const vids = slot.querySelectorAll('video');
     vids.forEach(v => {

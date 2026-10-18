@@ -231,6 +231,8 @@ input, textarea { font: inherit; color: inherit; }
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 12px;
   background: #121418; border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 30px 80px rgba(0, 0, 0, .65);
 }
+.pgroup { grid-column: 1 / -1; margin: 8px 2px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8b8f99; }
+.pgroup:first-child { margin-top: 0; }
 .pcard { padding: 0; border: 0; background: none; text-align: left; }
 .pthumb { aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; position: relative; outline: 1.5px solid transparent; transition: outline-color .15s; }
 .pcard:hover .pthumb { outline-color: rgba(255, 255, 255, .5); }
