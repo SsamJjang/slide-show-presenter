@@ -29,7 +29,7 @@ const Moments = (() => {
 
   const FRAG = `
 precision highp float;
-uniform vec2 uRes; uniform float uT, uP, uS, uL;
+uniform vec2 uRes; uniform float uT, uP;
 mat2 R(float a){ float c = cos(a), s = sin(a); return mat2(c,-s,s,c); }
 float H(float n){ return fract(sin(n*127.1 + 3.7)*43758.5453); }
 float H2(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1)))*43758.5453); }
@@ -341,66 +341,100 @@ void rainbow(vec2 p){
 void main(){
   vec2 p = (gl_FragCoord.xy - .5*uRes)/(.5*uRes.y);
   px = 2./uRes.y;
-  FRONT = uL > .5;
+  FRONT = LAYER > .5;
   acc = vec4(0.);
-  float s = uS;
-  if (s > 8.5) sprinkles(p);
-  else if (s > 7.5) ribbons(p);
-  else if (s > 6.5) blooms(p);
-  else if (s > 5.5) fabric(p);
-  else if (s > 4.5) cushion(p);
-  else if (s > 3.5) bubbles(p);
-  else if (s > 2.5) pebbles(p);
-  else if (s > 1.5) capsules(p);
-  else if (s > .5) crystals(p);
-  else rainbow(p);
+  MOMENT(p);
   gl_FragColor = clamp(acc, 0., 1.);
 }`;
 
+  /* One small program per second and layer, rather than one shader with
+     every moment in it: each runs lighter, and none of them is compiled
+     at the moment it is first needed. */
+  const MOMENT = ['rainbow', 'crystals', 'capsules', 'pebbles', 'bubbles', 'cushion', 'fabric', 'blooms', 'ribbons', 'sprinkles'];
+  const VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+
+  /* Builds every program in the background as soon as the countdown is on
+     screen, then draws each once off-screen so the driver finishes them
+     too; by the last ten seconds nothing is left to compile. */
   function mount(canvas, layer = 'front') {
     const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, powerPreference: 'high-performance' });
     const none = { show() {}, destroy() {} };
     if (!gl) return none;
-    const sh = (type, src) => {
-      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.warn('[moments]', gl.getShaderInfoLog(s)); return null; }
-      return s;
-    };
-    const vs = sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}');
-    const fs = sh(gl.FRAGMENT_SHADER, FRAG);
-    if (!vs || !fs) return none;
-    const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
-    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return none;
-    gl.useProgram(pr);
+    const par = gl.getExtension('KHR_parallel_shader_compile');
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const vs = sh(gl.VERTEX_SHADER, VERT);
+    const progs = MOMENT.map(fn => {
+      const fs = sh(gl.FRAGMENT_SHADER, `#define MOMENT ${fn}
+#define LAYER ${layer === 'back' ? '0.' : '1.'}
+` + FRAG);
+      const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+      return { pr, fs, ready: false, warm: false, U: null };
+    });
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const U = {}; ['uRes', 'uT', 'uP', 'uS', 'uL'].forEach(n => U[n] = gl.getUniformLocation(pr, n));
 
-    // Smooth shapes hold up to upscaling: draw at ~1000px and let it stretch.
-    canvas.width = 1024; canvas.height = 576;
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.uniform2f(U.uRes, canvas.width, canvas.height);
-    gl.uniform1f(U.uL, layer === 'back' ? 0 : 1);
+    canvas.width = 1024; canvas.height = 576;   // smooth shapes hold up to upscaling
 
-    let second = -1, since = 0, raf = 0;
+    // Ready once linked; with the parallel extension we ask without blocking.
+    const settle = (P) => {
+      if (P.ready || P.U === false) return P.ready;
+      if (par && !gl.getProgramParameter(P.pr, par.COMPLETION_STATUS_KHR)) return false;
+      if (!gl.getProgramParameter(P.pr, gl.LINK_STATUS)) {
+        console.warn('[moments]', gl.getShaderInfoLog(P.fs)); P.U = false; return false;
+      }
+      gl.useProgram(P.pr);
+      const loc = gl.getAttribLocation(P.pr, 'p');
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      P.U = {}; ['uRes', 'uT', 'uP'].forEach(n => P.U[n] = gl.getUniformLocation(P.pr, n));
+      return (P.ready = true);
+    };
+    const use = (P) => {
+      gl.useProgram(P.pr);
+      const loc = gl.getAttribLocation(P.pr, 'p');
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    };
+
+    let second = -1, since = 0, raf = 0, warming = 0;
     const t0 = performance.now();
+    // Warm one program per frame: a single pixel, mid-animation.
+    function warm() {
+      const P = progs.find(P => !P.warm && P.U !== false);
+      if (!P) { warming = 0; return; }
+      warming = requestAnimationFrame(warm);
+      if (!settle(P)) return;
+      use(P);
+      gl.viewport(0, 0, 1, 1);
+      gl.uniform2f(P.U.uRes, canvas.width, canvas.height);
+      gl.uniform1f(P.U.uT, 1); gl.uniform1f(P.U.uP, .5);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.clearColor(0, 0, 0, 0); gl.viewport(0, 0, canvas.width, canvas.height); gl.clear(gl.COLOR_BUFFER_BIT);
+      P.warm = true;
+    }
+    // after the slide has finished arriving, so its entrance stays smooth
+    const wt = setTimeout(() => { warming = requestAnimationFrame(warm); }, 1800);
+
     function frame(now) {
       raf = requestAnimationFrame(frame);
+      const P = progs[second];
+      if (!P || !settle(P)) return;
+      use(P);
+      gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-      if (second < 0) return;
-      gl.uniform1f(U.uT, (now - t0) / 1000);
-      gl.uniform1f(U.uP, Math.min(3, (now - since) / 1000));
-      gl.uniform1f(U.uS, second);
+      gl.uniform2f(P.U.uRes, canvas.width, canvas.height);
+      gl.uniform1f(P.U.uT, (now - t0) / 1000);
+      gl.uniform1f(P.U.uP, Math.min(3, (now - since) / 1000));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
-    raf = requestAnimationFrame(frame);
     return {
-      /* Cut to the material for this second. */
-      show(s, at = performance.now()) { if (s === second) return; second = s; since = at; },
+      /* Cut to the material for this second. Nothing draws until the first. */
+      show(s, at = performance.now()) {
+        if (s === second) return;
+        second = s; since = at;
+        if (!raf) raf = requestAnimationFrame(frame);
+      },
+      get ready() { return progs.every(P => P.warm || P.U === false); },
       destroy() {
-        cancelAnimationFrame(raf);
+        cancelAnimationFrame(raf); cancelAnimationFrame(warming); clearTimeout(wt);
         canvas.style.display = 'none';
         gl.getExtension('WEBGL_lose_context')?.loseContext();
       },

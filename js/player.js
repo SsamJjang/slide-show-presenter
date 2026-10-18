@@ -85,7 +85,10 @@ const Player = (() => {
         d.appendChild(document.createElement('canvas'));
         return d;
       };
-      const begin = () => {
+      // Built as soon as the countdown is up: the layers, their contexts and
+      // every program compile in the background now, not on the 10 s beat.
+      let begun = false;
+      if (finale) {
         const b = layer(), f = layer();
         scene.querySelector('.field').after(b);      // under every element
         scene.appendChild(f);                        // over every element
@@ -93,11 +96,14 @@ const Player = (() => {
         back = Moments.mount(b.firstChild, 'back');
         front = Moments.mount(f.firstChild, 'front');
         ctrls.push(back, front);
+      }
+      const begin = () => {
+        begun = true;
         cd.classList.add('final');
         // The scene's own sculptures and glows step aside, then stop
-        // drawing, so the moments have the whole machine.
+        // drawing (paused, not torn down), so the moments have the GPU.
         scene.classList.add('finale');
-        timers.push(setTimeout(() => forms.splice(0).forEach(c => c.destroy()), 700));
+        timers.push(setTimeout(() => forms.forEach(c => c.pause?.()), 650));
       };
       const tickF = () => {
         const ms = end - Date.now();
@@ -105,7 +111,7 @@ const Player = (() => {
         const last = finale && left < 10;
         const txt = last ? String(left).padStart(2, '0')
           : String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
-        if (last && !back) begin();
+        if (last && !begun) begin();
         if (last && left !== shown) {
           shown = left;
           // Start the moment on the beat itself, not on the tick that saw it.

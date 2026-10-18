@@ -320,6 +320,8 @@ void main(){
     raf = requestAnimationFrame(frame);
     return {
       resize,
+      /* Stop drawing but keep the context: releasing one mid-show stalls. */
+      pause() { cancelAnimationFrame(raf); raf = 0; },
       /* Hide first: a canvas whose context is released paints solid white,
          and the old screen is often still dissolving when this runs. */
       destroy() {
