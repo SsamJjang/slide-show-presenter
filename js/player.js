@@ -26,11 +26,18 @@ const Player = (() => {
     slot.style.top = (innerHeight - 1080 * s) / 2 + 'px';
   }
 
+  /* Where the numerals sit on each of the last ten beats (x, y in
+     design px, scale), composed with that second's moment. */
+  const BEAT = {
+    9: [0, 0, 1], 8: [-50, -10, 1.04], 7: [0, -70, .94], 6: [0, 70, .98], 5: [0, 0, .9],
+    4: [70, 0, 1.06], 3: [0, -80, .94], 2: [0, 0, 1], 1: [0, 0, .9], 0: [0, 0, 1],
+  };
+
   /* Live parts of a screen that is now on stage. Returns a release. */
   function liven(slot) {
     const scene = slot.querySelector('.scene');
     const opener = scene.classList.contains('opener');
-    const ctrls = [], timers = [];
+    const ctrls = [], timers = [], forms = [];
 
     // The open: liquid colour swells and merges, then blooms away.
     const liquid = slot.querySelector('.op-liquid');
@@ -45,7 +52,8 @@ const Player = (() => {
       const start = () => {
         const c = document.createElement('canvas');
         box.appendChild(c);
-        ctrls.push(Sculpture.mount(c, { ...opts, intro: true }));
+        const f = Sculpture.mount(c, { ...opts, intro: true });
+        ctrls.push(f); forms.push(f);
         box.classList.add('live');
       };
       // On the opener the sculpture arrives as the bands clear.
@@ -66,27 +74,47 @@ const Player = (() => {
       const texts = cd.querySelectorAll('text');
       const [m, s] = texts[0].textContent.trim().split(':').map(n => parseInt(n, 10) || 0);
       const end = Date.now() + (m * 60 + s) * 1000;
-      // The last ten seconds: each one its own material, rising through
-      // the numerals, which drop the minutes and grow to fill the frame.
+      // The last ten seconds: each one its own material and choreography,
+      // played in two layers around the numerals — which drop the minutes,
+      // grow to fill the frame and shift a little on every beat.
       const finale = cd.dataset.finale !== 'plain' && m * 60 + s > 0;
-      let mo = null, shown = -1;
+      let back = null, front = null, shown = -1, prevTxt = '';
+      const layer = () => {
+        const d = document.createElement('div');
+        d.className = 'moments';
+        d.appendChild(document.createElement('canvas'));
+        return d;
+      };
+      const begin = () => {
+        const b = layer(), f = layer();
+        scene.querySelector('.field').after(b);      // under every element
+        scene.appendChild(f);                        // over every element
+        f.classList.add('front');
+        back = Moments.mount(b.firstChild, 'back');
+        front = Moments.mount(f.firstChild, 'front');
+        ctrls.push(back, front);
+        cd.classList.add('final');
+        // The scene's own sculptures and glows step aside, then stop
+        // drawing, so the moments have the whole machine.
+        scene.classList.add('finale');
+        timers.push(setTimeout(() => forms.splice(0).forEach(c => c.destroy()), 700));
+      };
       const tickF = () => {
-        const left = Math.max(0, Math.ceil((end - Date.now()) / 1000 - .001));
+        const ms = end - Date.now();
+        const left = Math.max(0, Math.ceil(ms / 1000 - .001));
         const last = finale && left < 10;
         const txt = last ? String(left).padStart(2, '0')
           : String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
-        if (last && !mo) {
-          const layer = document.createElement('div');
-          layer.className = 'moments';
-          const c = document.createElement('canvas');
-          layer.appendChild(c);
-          scene.appendChild(layer);
-          mo = Moments.mount(c);
-          ctrls.push(mo);
-          cd.classList.add('final');
+        if (last && !back) begin();
+        if (last && left !== shown) {
+          shown = left;
+          // Start the moment on the beat itself, not on the tick that saw it.
+          const at = performance.now() - Math.max(0, left * 1000 - ms);
+          back.show(left, at); front.show(left, at);
+          const [x, y, k] = BEAT[left];
+          cd.style.setProperty('--nx', x + 'px'); cd.style.setProperty('--ny', y + 'px'); cd.style.setProperty('--ns', k);
         }
-        if (last && left !== shown) { shown = left; mo.show(left); }
-        texts.forEach(t => { t.textContent = txt; });
+        if (txt !== prevTxt) { prevTxt = txt; texts.forEach(t => { t.textContent = txt; }); }
       };
       tickF();
       clock = setInterval(tickF, 50);

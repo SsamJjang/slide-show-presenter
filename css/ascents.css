@@ -170,8 +170,11 @@
 
 /* The last ten seconds: numerals cut to two digits and fill the frame;
    each second's material rises through them from below. */
-.count.final { transform: scale(var(--fs, 1.4)); transform-origin: 50% 55%; }
-.moments { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.count.final { transform: translate(var(--nx, 0), var(--ny, 0)) scale(calc(var(--fs, 1.4) * var(--ns, 1))); transform-origin: 50% 55%; }
+.moments { position: absolute; inset: 0; pointer-events: none; }
+.moments.front { z-index: 5; }
+.scene .el-sculpture, .scene .el-glow { transition: opacity .6s ease; }
+.scene.finale .el-sculpture, .scene.finale .el-glow { opacity: 0 !important; }
 .moments canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 /* ---------------- Glow ----------------
