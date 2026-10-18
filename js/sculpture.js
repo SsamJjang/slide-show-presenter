@@ -293,6 +293,14 @@ void main(){
   function mount(canvas, opts = {}) {
     const R = renderer(canvas, false, isLiquid(opts) ? LIQUID : FRAG);
     if (!R) return { destroy() {}, resize() {} };
+    /* Browsers drop the oldest WebGL contexts when too many are open (after
+       a presentation, say). A lost canvas paints white: hide it and let the
+       still picture underneath show instead. */
+    canvas.addEventListener('webglcontextlost', () => {
+      cancelAnimationFrame(raf);
+      canvas.style.display = 'none';
+      canvas.parentElement?.classList.remove('live');
+    });
     const to = target(opts);
     const cur = { ...to };
     if (opts.intro) { cur.size = to.size * .4; cur.roll = to.roll - 1.2; cur.alpha = 0; }

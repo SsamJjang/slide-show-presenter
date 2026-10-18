@@ -163,9 +163,10 @@ const Editor = (() => {
     const n = ev.target.closest('.el');
     ev.preventDefault();
     if (!n) { select(null); return; }
+    const again = sel === n.dataset.id;          // a second click on the selection edits it
     select(n.dataset.id);
     const e = elOf(sel);
-    drag = { mode: 'move', id: e.id, sx: ev.clientX, sy: ev.clientY, x: e.x, y: e.y, moved: false, orig: { ...e } };
+    drag = { mode: 'move', id: e.id, sx: ev.clientX, sy: ev.clientY, x: e.x, y: e.y, moved: false, again, orig: { ...e } };
     stage.setPointerCapture(ev.pointerId);
   });
 
@@ -245,7 +246,7 @@ const Editor = (() => {
     const d = drag; drag = null;
     stage.querySelector('.gv') && (stage.querySelector('.gv').hidden = true);
     stage.querySelector('.gh') && (stage.querySelector('.gh').hidden = true);
-    if (d.mode === 'move' && !d.moved) return;
+    if (d.mode === 'move' && !d.moved) { if (d.again) startEdit(d.id); return; }
     // The element was changed live while dragging. Put it back, then apply
     // the result through the deck, so the whole gesture is one undo step.
     const e = elOf(d.id), now = { ...e };
@@ -256,21 +257,42 @@ const Editor = (() => {
 
   /* ---------- edit text / fill media ---------- */
   let editing = null;
+  /* Double-click, a click on what is already selected, or Enter starts
+     typing. The stage holds pointer capture while you press (for dragging),
+     which retargets clicks to the stage itself, so the element is found
+     from the pointer position, not from the event target. */
   stage.addEventListener('dblclick', (ev) => {
-    const n = ev.target.closest('.el'); if (!n) return;
-    const e = elOf(n.dataset.id);
+    // Editing may have started on the first click of this double-click; the
+    // browser's own double-click then selects one word. Select it all again.
+    if (editing) { if (performance.now() - editing.t < 700) document.getSelection().selectAllChildren(editing.node); return; }
+    const n = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('#stage .el') || nodeOf(sel);
+    if (n) startEdit(n.dataset.id);
+  });
+  function startEdit(id) {
+    if (editing) return;
+    const e = elOf(id), n = nodeOf(id);
+    if (!e || !n) return;
     if (e.type === 'media') return pick(e.id);
-    const t = n.querySelector('[data-edit]'); if (!t) return;
-    editing = { id: e.id, node: t };
+    if (e.type === 'count') {                     // the time is typed in the toolbar
+      const inp = tools.querySelector('[data-set="text"]');
+      if (inp) { inp.focus(); inp.select(); }
+      return;
+    }
+    if (sel !== id) select(id);
+    const t = nodeOf(id)?.querySelector('[data-edit]'); if (!t) return;
+    editing = { id: e.id, node: t, t: performance.now() };
     t.contentEditable = 'plaintext-only'; t.spellcheck = false;
     t.focus();
     document.getSelection().selectAllChildren(t);
     $('sel').classList.add('editing');
-  });
+  }
   stage.addEventListener('keydown', (ev) => {
     if (!editing) return;
     const e = elOf(editing.id);
-    if (ev.key === 'Escape' || (ev.key === 'Enter' && (e.type !== 'text' || ev.ctrlKey))) { ev.preventDefault(); endEdit(); }
+    if (ev.key === 'Escape' || (ev.key === 'Enter' && (e.type !== 'text' || ev.ctrlKey))) {
+      ev.preventDefault(); ev.stopPropagation();   // ends typing; keeps the element selected
+      endEdit();
+    }
   });
   stage.addEventListener('input', () => { if (editing) drawSel(); });
   stage.addEventListener('focusout', (ev) => { if (editing && ev.target === editing.node) endEdit(); });
@@ -391,7 +413,7 @@ const Editor = (() => {
     let top = br.top - wr.top - tools.offsetHeight - 12;
     if (top < 4) top = br.bottom - wr.top + 12;
     let left = br.left - wr.left + br.width / 2 - tools.offsetWidth / 2;
-    left = Math.max(sr.left - wr.left, Math.min(left, sr.right - wr.left - tools.offsetWidth));
+    left = Math.max(4, Math.min(left, wrap.clientWidth - tools.offsetWidth - 4));
     tools.style.top = Math.max(4, Math.min(top, wrap.clientHeight - tools.offsetHeight - 4)) + 'px';
     tools.style.left = left + 'px';
   }
@@ -568,6 +590,7 @@ const Editor = (() => {
     if (mod && ev.key.toLowerCase() === 'z') { ev.preventDefault(); if (!Deck.undo()) toast('Nothing to undo'); return; }
     if (mod && ev.key.toLowerCase() === 'd') { ev.preventDefault(); sel ? dupEl() : dupScene(cur); return; }
     if (ev.key === 'Escape') { select(null); return; }
+    if (sel && (ev.key === 'Enter' || ev.key === 'F2')) { ev.preventDefault(); startEdit(sel); return; }
     if (sel && (ev.key === 'Delete' || ev.key === 'Backspace')) { ev.preventDefault(); delEl(); return; }
     if (sel && ev.key.startsWith('Arrow')) {
       ev.preventDefault();
