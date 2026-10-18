@@ -47,6 +47,11 @@ float noise(vec3 x){
              mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x), mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
 }
 float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a*noise(p); p *= 2.03; a *= .5; } return s; }
+float fbm2(vec3 p){ return .5*noise(p) + .25*noise(p*2.03) + .094; }   // the first two octaves, same mean
+/* Stone is marched against its smooth two-octave shape and only takes its
+   fine weathering where the ray lands: four noise layers at every step of
+   every ray made it the slowest thing in the deck by ten times. */
+bool FINE = true;
 
 vec3 L;   // surface coordinates for colouring: across, along, depth
 float sdBox(vec3 p, vec3 b, float r){ vec3 q = abs(p) - b + r; return length(max(q,0.)) + min(max(q.x,max(q.y,q.z)),0.) - r; }
@@ -72,18 +77,18 @@ float map(vec3 p){
     p.xz = R(tt*.08)*p.xz; p.xy = R(.2)*p.xy;
     vec3 q = p / vec3(.95, .72, .8);
     float d = (length(q) - 1.)*.72;
-    d += (fbm(p*2.2) - .5)*.22 + (fbm(p*7.) - .5)*.035;
+    d += FINE ? (fbm(p*2.2) - .5)*.22 + (noise(p*7.) - .5)*.03 : (fbm2(p*2.2) - .5)*.22;
     L = vec3(p.x, p.y, p.z);
-    return d*.55;
+    return d*(FINE ? .55 : .8);
   }
   if (uKind < 2.5) {                       // arch: a bent stone limb
     p.xz = R(sin(tt*.15)*.35)*p.xz;
     vec2 q = vec2(length(p.xy) - .78, p.z);
     float d = length(q / vec2(1., 1.15)) - .25;
     d = max(d, -p.y - .35);
-    d += (fbm(p*3.) - .5)*.08 + (fbm(p*9.) - .5)*.02;
+    d += FINE ? (fbm(p*3.) - .5)*.08 + (noise(p*9.) - .5)*.018 : (fbm2(p*3.) - .5)*.08;
     L = vec3(atan(p.y, p.x), length(p.xy), p.z);
-    return d*.6;
+    return d*(FINE ? .6 : .85);
   }
   // slab: a thick rounded pane, slowly tilting
   p.xz = R(.5 + sin(tt*.17)*.25)*p.xz; p.yz = R(-.35 + sin(tt*.13)*.12)*p.yz;
@@ -129,12 +134,32 @@ void main(){
     vec3 ro = vec3(0.,0.,3.2), rd = normalize(vec3(q,-2.6));
     float t = 1.4, dm = 1e9, tm = 1.4; bool hit = false;
     float px = 3.2/(uRes.y*uSize);
+    // Only march inside a sphere around the form; rays that miss it skip.
+    bool rock = uKind > .5 && uKind < 2.5;
+    float rb = rock ? 1.32 : 1.75;
+    float b = dot(ro, rd), hh = b*b - dot(ro, ro) + rb*rb;
+    float t1 = -1.;
+    if (hh > 0.) { t = max(1.4, -b - sqrt(hh)); t1 = -b + sqrt(hh); }
+    if (uKind > .5 && uKind < 1.5 && t1 > 0.) {
+      // the stone fits a slightly swollen ellipsoid: start right at its skin
+      vec3 o = ro, dd = rd;
+      o.xz = R(uTime*.08)*o.xz; o.xy = R(.2)*o.xy; dd.xz = R(uTime*.08)*dd.xz; dd.xy = R(.2)*dd.xy;
+      vec3 qo = o/vec3(.95, .72, .8), qd = dd/vec3(.95, .72, .8);
+      float qa = dot(qd, qd), qb = dot(qo, qd), qh = qb*qb - qa*(dot(qo, qo) - 1.44);
+      if (qh > 0.) { t = max(t, (-qb - sqrt(qh))/qa); t1 = min(t1, (-qb + sqrt(qh))/qa); }
+      else t1 = -1.;
+    }
+    FINE = !rock;
     for (int i = 0; i < 110; i++) {
+      if (t > t1) break;
       float h = map(ro + rd*t);
       if (h < dm) { dm = h; tm = t; }
       if (h < .0008) { hit = true; tm = t; break; }
-      t += h; if (t > 5.) break;
+      t += h;
     }
+    FINE = true;
+    if (rock && hit)                    // settle onto the detailed surface
+      for (int i = 0; i < 2; i++) tm += map(ro + rd*tm);
     // Silk gets a softer, feathered edge; everything else a clean one.
     float soft = uMat > 1.5 && uMat < 2.5 ? 2.2 : .6;
     float cov = hit ? 1. : clamp(1. - dm/(px*soft), 0., 1.);
@@ -150,7 +175,7 @@ void main(){
         vec3 base = pal(L.x*.32 + L.y*.16 + fr*.35 + uTime*.012);
         col = base*(.48 + .72*dif) + vec3(1.)*sp*.75 + mix(base, vec3(1.), .5)*fr*.5;
       } else if (uMat < 1.5) {                          // stone + prism light
-        float grain = .9 + .1*fbm(p*18.);
+        float grain = .9 + .1*noise(p*18.);
         vec3 stone = vec3(.93, .94, .96)*grain;
         float wrap = clamp(.35 + .65*dot(n, l), 0., 1.);
         vec3 ld = normalize(vec3(.8, .25, .3));
