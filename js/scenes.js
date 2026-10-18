@@ -218,7 +218,7 @@ const Scenes = (() => {
     const ink = e.tone === 'ink';
     const text = (cls, fill, extra = '') =>
       `<text class="${cls}" x="50%" y="${Math.round(size * .86)}" text-anchor="middle" font-size="${size}" fill="${fill}"${extra}>${t}</text>`;
-    return `<svg class="count" viewBox="0 0 ${e.w} ${h}" width="${e.w}" height="${h}" overflow="visible" data-countdown>` +
+    return `<svg class="count" viewBox="0 0 ${e.w} ${h}" width="${e.w}" height="${h}" overflow="visible" data-countdown data-finale="${e.finale || 'moments'}" style="--fs:${Math.max(1.3, Math.min(3, 900 / size)).toFixed(2)}">` +
       `<defs>` +
         `<linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1">` +
           `<stop offset="0" stop-color="#c9f0ff"/><stop offset=".22" stop-color="#77c6ff"/>` +

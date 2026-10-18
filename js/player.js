@@ -66,13 +66,30 @@ const Player = (() => {
       const texts = cd.querySelectorAll('text');
       const [m, s] = texts[0].textContent.trim().split(':').map(n => parseInt(n, 10) || 0);
       const end = Date.now() + (m * 60 + s) * 1000;
+      // The last ten seconds: each one its own material, rising through
+      // the numerals, which drop the minutes and grow to fill the frame.
+      const finale = cd.dataset.finale !== 'plain' && m * 60 + s > 0;
+      let mo = null, shown = -1;
       const tickF = () => {
-        const left = Math.max(0, Math.round((end - Date.now()) / 1000));
-        const txt = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+        const left = Math.max(0, Math.ceil((end - Date.now()) / 1000 - .001));
+        const last = finale && left < 10;
+        const txt = last ? String(left).padStart(2, '0')
+          : String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+        if (last && !mo) {
+          const layer = document.createElement('div');
+          layer.className = 'moments';
+          const c = document.createElement('canvas');
+          layer.appendChild(c);
+          scene.appendChild(layer);
+          mo = Moments.mount(c);
+          ctrls.push(mo);
+          cd.classList.add('final');
+        }
+        if (last && left !== shown) { shown = left; mo.show(left); }
         texts.forEach(t => { t.textContent = txt; });
       };
       tickF();
-      clock = setInterval(tickF, 250);
+      clock = setInterval(tickF, 50);
     }
 
     return () => {

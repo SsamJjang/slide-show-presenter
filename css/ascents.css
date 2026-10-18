@@ -168,6 +168,12 @@
 @keyframes cntIn { from { opacity: 0; filter: blur(14px); } }
 .scene.play .el-count[data-in] { animation: none; }
 
+/* The last ten seconds: numerals cut to two digits and fill the frame;
+   each second's material rises through them from below. */
+.count.final { transform: scale(var(--fs, 1.4)); transform-origin: 50% 55%; }
+.moments { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.moments canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
 /* ---------------- Glow ----------------
    A soft bloom of coloured light that slowly breathes. */
 .glow { position: absolute; inset: 0; border-radius: 50%; filter: blur(70px); animation: breathe 14s ease-in-out infinite alternate; }

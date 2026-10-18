@@ -369,7 +369,8 @@ const Editor = (() => {
       h += seg('tint', e.tint || 'iris', [['iris', 'Iris'], ['violet', 'Violet'], ['pink', 'Pink'], ['cyan', 'Cyan'], ['warm', 'Warm']]);
     } else if (e.type === 'count') {
       h += `<label class="tlabel">Time<input class="tin" data-set="text" value="${Scenes.esc(e.text)}" size="5"></label>` + sep +
-        seg('tone', e.tone || 'gloss', [['gloss', 'Glossy blue'], ['ink', 'Ink']]);
+        seg('tone', e.tone || 'gloss', [['gloss', 'Glossy blue'], ['ink', 'Ink']]) + sep +
+        `<span class="tlabel">Last 10 s</span>` + seg('finale', e.finale || 'moments', [['moments', 'Moments'], ['plain', 'Plain']]);
     } else if (e.type === 'pill') {
       h += seg('kind', e.kind, [['live', 'Live'], ['soft', 'Prompt'], ['tag', 'Tag']]);
     }
