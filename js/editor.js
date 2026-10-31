@@ -8,6 +8,8 @@
    toolbar over the selection holds only that element's choices.
 
    Keys:  Delete remove · arrows nudge (Shift ×10) · Ctrl+D duplicate
+          Ctrl+C / Ctrl+X / Ctrl+V copy, cut, paste (also images and text
+          pasted in from anywhere)
           Esc deselect · Ctrl+Z undo · N add scene · Ctrl+Enter present
           With nothing selected, ↑ ↓ move between scenes.
    ============================================================ */
@@ -381,18 +383,60 @@ const Editor = (() => {
     del: '<svg viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5"/></svg>',
   };
 
+  /* Type: typeface, weight, size, italic, capitals, colour (any colour
+     too). The "More" row adds effect, spacing and leading, and for every
+     element opacity and rotation. */
+  const TYPED = ['text', 'stat', 'list', 'lockup', 'card'];
+  let more = false;
+  const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
+  const sizeOf = (e) => e.size || (e.type === 'text' ? Scenes.TEXT_STYLES[e.style]?.size : BASE[e.type]) || 40;
+  function typeTools(e) {
+    const fonts = Object.entries(Scenes.FONTS);
+    const kinds = [...new Set(fonts.map(([, f]) => f[2]))];
+    const base = e.type === 'text' ? Scenes.TEXT_STYLES[e.style]?.weight : e.type === 'lockup' ? 500 : 400;
+    let h = `<select data-set="font" class="tsel" title="Typeface">` + kinds.map(k => `<optgroup label="${k}">` +
+      fonts.filter(([, f]) => f[2] === k).map(([v, f]) =>
+        `<option value="${v}"${(e.font || 'ascents') === v ? ' selected' : ''}>${f[0]}</option>`).join('') + `</optgroup>`).join('') + `</select>`;
+    h += `<select data-set="weight" data-num class="tsel" title="Weight">${Scenes.WEIGHTS.map(([v, l]) =>
+      `<option value="${v}"${(+e.weight || base) === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+    if (e.type !== 'card') h += `<input class="tin tsize" type="number" min="8" max="1600" data-set="size" data-num value="${Math.round(sizeOf(e))}" title="Size">`;
+    h += `<span class="tseg"><button data-toggle="italic" class="${e.italic ? 'on' : ''}" title="Italic"><i class="ti">I</i></button>` +
+      `<button data-toggle="caps" class="${e.caps ? 'on' : ''}" title="Capitals">AA</button></span>`;
+    return h;
+  }
+  function colorTools(e) {
+    return seg('color', isHex(e.color) ? '' : e.color || 'auto', Object.entries(Scenes.COLORS)) +
+      `<input type="color" class="tcolor${isHex(e.color) ? ' on' : ''}" data-set="color" value="${isHex(e.color) ? e.color : '#ffffff'}" title="Any colour">`;
+  }
+  const range = (k, label, v, min, max, step, unit = '') =>
+    `<label class="tlabel">${label}<input type="range" class="trange" data-set="${k}" data-num min="${min}" max="${max}" step="${step}" value="${v}">` +
+    `<output>${+(+v).toFixed(2)}${unit}</output></label>`;
+  function moreTools(e) {
+    let h = '<div class="trow">';
+    if (TYPED.includes(e.type)) {
+      const st = Scenes.TEXT_STYLES[e.style] || {};
+      h += `<span class="tlabel">Effect</span>` + seg('fx', e.fx || 'none', Object.entries(Scenes.EFFECTS)) + sep;
+      h += range('track', 'Spacing', e.track ?? st.ls ?? 0, -.1, .5, .005);
+      if (e.type === 'text' || e.type === 'list') h += range('lh', 'Lines', e.lh || st.lh || 1.3, .7, 2.2, .02);
+      h += sep;
+    }
+    h += range('op', 'Opacity', e.op ?? 1, .05, 1, .01) + range('rot', 'Turn', e.rot || 0, -180, 180, 1, '°') +
+      `<button class="tbtn" data-act="plain" title="Back to the plain style">Reset</button></div>`;
+    return h;
+  }
+
   function renderTools() {
     const e = sel && elOf(sel);
     if (!e) { tools.hidden = true; return; }
     let h = '';
     if (e.type === 'text') {
       h += `<select data-set="style" class="tsel">${Object.entries(Scenes.TEXT_STYLES).map(([v, s]) =>
-        `<option value="${v}"${e.style === v ? ' selected' : ''}>${s.name}</option>`).join('')}</select>` + sep;
+        `<option value="${v}"${e.style === v ? ' selected' : ''}>${s.name}</option>`).join('')}</select>` + typeTools(e) + sep;
       h += `<span class="tseg">${['left', 'center', 'right'].map(a =>
         `<button data-set="align" data-v="${a}" class="ic${(e.align || 'left') === a ? ' on' : ''}" title="Align ${a}">${ICON[a]}</button>`).join('')}</span>` + sep;
-      h += seg('color', e.color || 'auto', Object.entries(Scenes.COLORS));
+      h += colorTools(e);
     } else if (e.type === 'lockup') {
-      h += seg('glyph', e.glyph, [['spark', 'Sparkle'], ['mark', 'APEX logo']]);
+      h += seg('glyph', e.glyph, [['spark', 'Sparkle'], ['mark', 'APEX logo']]) + sep + typeTools(e);
     } else if (e.type === 'media') {
       h += seg('fit', e.fit, [['cover', 'Fill'], ['contain', 'Fit']]) + sep +
         seg('round', e.round === 'circle' ? 'circle' : !!e.round, [[false, 'Square'], [true, 'Rounded'], ['circle', 'Circle']]) + sep +
@@ -413,14 +457,13 @@ const Editor = (() => {
       h += seg('form', e.form || 'blob', [['blob', 'Blob'], ['circle', 'Circle'], ['pill', 'Pill']]) + sep +
         seg('tint', e.tint || 'iris', Object.entries(Scenes.SHAPE_TINTS));
     } else if (e.type === 'card') {
-      h += seg('style', e.style || 'frost', [['frost', 'Frosted'], ['light', 'Light'], ['ink', 'Ink'], ['iris', 'Iris'], ['coral', 'Coral']]);
+      h += seg('style', e.style || 'frost', [['frost', 'Frosted'], ['light', 'Light'], ['ink', 'Ink'], ['iris', 'Iris'], ['coral', 'Coral']]) + sep + typeTools(e);
     } else if (e.type === 'stat') {
-      h += `<span class="tseg">${['left', 'center', 'right'].map(a =>
+      h += typeTools(e) + sep + `<span class="tseg">${['left', 'center', 'right'].map(a =>
         `<button data-set="align" data-v="${a}" class="ic${(e.align || 'left') === a ? ' on' : ''}" title="Align ${a}">${ICON[a]}</button>`).join('')}</span>` + sep +
-        seg('color', e.color || 'auto', Object.entries(Scenes.COLORS));
+        colorTools(e);
     } else if (e.type === 'list') {
-      h += seg('kind', e.kind || 'dots', [['dots', 'Dots'], ['numbers', 'Numbers']]) + sep +
-        seg('color', e.color || 'auto', Object.entries(Scenes.COLORS));
+      h += seg('kind', e.kind || 'dots', [['dots', 'Dots'], ['numbers', 'Numbers']]) + sep + typeTools(e) + sep + colorTools(e);
     } else if (e.type === 'glow') {
       h += seg('tint', e.tint || 'iris', [['iris', 'Iris'], ['violet', 'Violet'], ['pink', 'Pink'], ['cyan', 'Cyan'], ['warm', 'Warm']]);
     } else if (e.type === 'count') {
@@ -430,10 +473,12 @@ const Editor = (() => {
     } else if (e.type === 'pill') {
       h += seg('kind', e.kind, [['live', 'Live'], ['soft', 'Prompt'], ['tag', 'Tag']]);
     }
-    h += sep + `<button class="tbtn ic" data-act="front" title="Bring to front">${ICON.front}</button>` +
+    h += sep + `<button class="tbtn${more ? ' on' : ''}" data-act="more" title="Effects, spacing, opacity, rotation">More</button>` +
+      `<button class="tbtn ic" data-act="front" title="Bring to front">${ICON.front}</button>` +
       `<button class="tbtn ic" data-act="back" title="Send to back">${ICON.back}</button>` +
       `<button class="tbtn ic" data-act="dup" title="Duplicate (Ctrl+D)">${ICON.dup}</button>` +
       `<button class="tbtn ic danger" data-act="del" title="Delete">${ICON.del}</button>`;
+    if (more) h += moreTools(e);
     tools.innerHTML = h;
     tools.hidden = false;
     placeTools();
@@ -456,12 +501,15 @@ const Editor = (() => {
   tools.addEventListener('click', (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
     const e = elOf(sel); if (!e) return;
+    if (b.dataset.toggle) return Deck.change(() => { const x = elOf(sel); x[b.dataset.toggle] = !x[b.dataset.toggle]; });
     if (b.dataset.set) {
       let v = b.dataset.v; if (v === 'true' || v === 'false') v = v === 'true';
       Deck.change(() => { elOf(sel)[b.dataset.set] = v; if (b.dataset.set === 'style') delete elOf(sel).size; });
       return;
     }
     const a = b.dataset.act;
+    if (a === 'more') { more = !more; renderTools(); return; }
+    if (a === 'plain') return Deck.change(() => { const x = elOf(sel); LOOK.forEach(k => delete x[k]); });
     if (a === 'replace') return pick(e.id);
     if (a === 'rotL' || a === 'rotR') return Deck.change(() => { elOf(sel).roll = (elOf(sel).roll || 0) + (a === 'rotL' ? -15 : 15); });
     if (a === 'reshuffle') return Deck.change(() => { elOf(sel).seed = Math.floor(Math.random() * 40); });
@@ -472,9 +520,34 @@ const Editor = (() => {
     if (a === 'dup') return dupEl();
     if (a === 'del') return delEl();
   });
+  const LOOK = ['font', 'weight', 'italic', 'caps', 'track', 'lh', 'fx', 'op', 'rot'];
+  const valOf = (t) => t.dataset.num != null ? parseFloat(t.value) : t.value;
+  /* Sliders and the colour picker show their effect live on the stage while
+     you drag; the deck takes the result once, as one undo step. */
+  let live = null;
+  tools.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (!(t.type === 'range' || t.type === 'color') || !t.dataset.set) return;
+    const e = elOf(sel), n = nodeOf(sel); if (!e || !n) return;
+    if (!live) live = { id: e.id, orig: { ...e } };
+    e[t.dataset.set] = valOf(t);
+    n.style.opacity = e.op != null && e.op < 1 ? e.op : '';
+    n.style.rotate = e.rot ? e.rot + 'deg' : '';
+    if (TYPED.includes(e.type)) n.innerHTML = Scenes.body(e);
+    const o = t.parentElement.querySelector('output');
+    if (o) o.textContent = +(+t.value).toFixed(2) + (t.dataset.set === 'rot' ? '°' : '');
+    drawSel();
+  });
   tools.addEventListener('change', (ev) => {
     const t = ev.target; if (!t.dataset.set) return;
-    Deck.change(() => { elOf(sel)[t.dataset.set] = t.value; if (t.dataset.set === 'style') delete elOf(sel).size; });
+    const v = valOf(t);
+    if (live) {
+      const e = elOf(live.id);
+      if (e) { Object.keys(e).forEach(k => { if (!(k in live.orig)) delete e[k]; }); Object.assign(e, live.orig); }
+      live = null;
+    }
+    if (Number.isNaN(v)) return renderTools();
+    Deck.change(() => { elOf(sel)[t.dataset.set] = v; if (t.dataset.set === 'style') delete elOf(sel).size; });
   });
 
   function dupEl() {
@@ -483,6 +556,62 @@ const Editor = (() => {
     Deck.change(() => scene().els.push(c));
     sel = c.id; renderAll();
   }
+  /* ---------- copy, cut, paste ----------
+     Elements travel on the system clipboard as JSON, so they paste into
+     another scene, another tab or another deck in this browser. Pasting an
+     image (a screenshot, say) makes an image; pasting text makes a text box. */
+  const CLIP = 'apex-ascents/elements:';
+  let clip = null;                       // the last copy, if the clipboard is refused
+  const typing = (t) => editing || t?.closest?.('input, textarea, select, [contenteditable="plaintext-only"]');
+  function copyOut(ev, cut) {
+    if (Player.active || typing(ev.target) || !sel || !sheet.hidden) return;
+    const e = elOf(sel); if (!e) return;
+    clip = [JSON.parse(JSON.stringify(e))];
+    ev.preventDefault();
+    ev.clipboardData.setData('text/plain', CLIP + JSON.stringify(clip));
+    if (cut) delEl();
+    toast(cut ? 'Cut' : 'Copied');
+  }
+  document.addEventListener('copy', (ev) => copyOut(ev, false));
+  document.addEventListener('cut', (ev) => copyOut(ev, true));
+  document.addEventListener('paste', async (ev) => {
+    if (Player.active || typing(ev.target) || !sheet.hidden || !scene()) return;
+    const dt = ev.clipboardData;
+    const file = [...(dt?.files || [])].find(f => /^(image|video)\//.test(f.type));
+    const text = dt?.getData('text/plain') || '';
+    ev.preventDefault();
+    if (text.startsWith(CLIP)) { try { return pasteEls(JSON.parse(text.slice(CLIP.length))); } catch (err) { /* not ours after all */ } }
+    if (file) return pasteMedia(file);
+    if (text.trim()) {
+      const t = text.trim().slice(0, 2000);
+      return pasteEls([t.length < 40 && !t.includes('\n') ? Scenes.E.text(t, 'title', 160, 440, 1600) : Scenes.E.text(t, 'body', 160, 380, 1400)]);
+    }
+    if (clip) pasteEls(clip);
+  });
+  function pasteEls(els) {
+    const made = els.map(e => {
+      const c = { ...JSON.parse(JSON.stringify(e)), id: Scenes.uid() };
+      // Pasting onto the same spot steps it down and across, so it shows.
+      while (scene().els.some(x => x.type === c.type && x.x === c.x && x.y === c.y)) { c.x += 40; c.y += 40; }
+      return c;
+    });
+    Deck.change(() => scene().els.push(...made));
+    sel = made[made.length - 1].id; renderAll();
+  }
+  async function pasteMedia(f) {
+    const ref = await mediaRef(f); if (!ref) return;
+    // Sized to the picture, as large as fits comfortably on the slide.
+    let w = 1200, h = 675;
+    if (Media.kind(ref) === 'image') {
+      const img = new Image(); img.src = Media.url(ref);
+      await img.decode().catch(() => {});
+      if (img.naturalWidth) { const k = Math.min(1400 / img.naturalWidth, 800 / img.naturalHeight); w = img.naturalWidth * k; h = img.naturalHeight * k; }
+    }
+    const e = Scenes.E.media(Math.round(960 - w / 2), Math.round(540 - h / 2), Math.round(w), Math.round(h), { fit: 'cover', round: true });
+    e.ref = ref;
+    pasteEls([e]);
+  }
+
   function delEl() {
     if (!sel) return;
     const id = sel; sel = null;
@@ -594,6 +723,58 @@ const Editor = (() => {
     go(Math.min(i, scenes().length - 1));
     toast('Scene removed — Ctrl+Z brings it back');
   }
+
+  /* ================= music ================= */
+
+  const musicPop = $('musicPop');
+  const mset = () => ({ ...Music.DEFAULTS, ...(Deck.deck.music || {}) });
+  const mseg = (key, cur, opts) => `<div class="mp-seg">${opts.map(([v, l]) =>
+    `<button data-${key}="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  function renderMusic() {
+    const m = mset();
+    musicPop.innerHTML =
+      `<div class="mp-h">Soundtrack</div>` + mseg('mm', m.mode, [['builtin', 'Built-in'], ['file', 'Your track'], ['off', 'Off']]) +
+      (m.mode === 'builtin' ? `<p class="mp-note">A tech score made live and cut to your show: a hit on every cut of the chrome open, the beat dropping as the name lands, a whoosh between screens. A video with sound ducks it.</p>` +
+        `<div class="mp-h">Under the talk</div>` + mseg('mb', m.bed, [['quiet', 'Quiet'], ['full', 'Full'], ['silent', 'Silent']]) : '') +
+      (m.mode === 'file' ? `<button class="mp-file" data-ma="file">${m.ref && m.name ? '♪ ' + Scenes.esc(m.name) : 'Choose a music file…'}</button>` +
+        `<p class="mp-note">Loops for the whole talk, and ducks under videos.</p>` : '') +
+      (m.mode !== 'off' ? `<div class="mp-h">Volume</div><input type="range" class="mp-vol" min="0" max="1" step=".01" value="${m.volume}">` +
+        `<button class="btn ghost mp-play" data-ma="preview">${Music.playing ? 'Stop' : '▶ Preview the open'}</button>` : '');
+  }
+  $('music').onclick = (ev) => {
+    ev.stopPropagation();
+    musicPop.hidden = !musicPop.hidden;
+    if (!musicPop.hidden) renderMusic();
+  };
+  musicPop.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const b = ev.target.closest('button'); if (!b) return;
+    const m = mset();
+    if (b.dataset.mm) Deck.change(d => { d.music = { ...m, mode: b.dataset.mm }; }, { quiet: true });
+    if (b.dataset.mb) Deck.change(d => { d.music = { ...m, bed: b.dataset.mb }; }, { quiet: true });
+    if (b.dataset.ma === 'preview') {
+      if (m.mode === 'file' && !m.ref) return toast('Choose a music file first');
+      Music.preview(m);
+    }
+    if (b.dataset.ma === 'file') {
+      pickFor = null; fileIn.accept = 'audio/*'; fileIn.value = '';
+      fileIn.onchange = async () => {
+        fileIn.onchange = null;
+        const f = fileIn.files?.[0]; if (!f) return;
+        if (!f.type.startsWith('audio/')) return toast('That isn’t a music file');
+        const ref = await Media.put(f);
+        Deck.change(d => { d.music = { ...mset(), mode: 'file', ref, name: f.name.replace(/\.[^.]+$/, '') }; }, { quiet: true });
+        renderMusic();
+      };
+      fileIn.click();
+    }
+    renderMusic();
+  });
+  musicPop.addEventListener('input', (ev) => {
+    if (!ev.target.classList.contains('mp-vol')) return;
+    Deck.change(d => { d.music = { ...mset(), volume: parseFloat(ev.target.value) }; }, { quiet: true, merge: 'volume' });
+  });
+  document.addEventListener('click', () => { musicPop.hidden = true; });
 
   /* ================= top bar ================= */
 

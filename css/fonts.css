@@ -1,0 +1,23 @@
+/* The typefaces you can set type in, besides Ascents (Figtree).
+   All from Google Fonts (SIL Open Font License), bundled so a talk
+   looks the same with no internet. Latin subset only. */
+
+@font-face { font-family: 'F-Lexend'; src: url('../fonts/Lexend.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Inter'; src: url('../fonts/Inter.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Manrope'; src: url('../fonts/Manrope.woff2') format('woff2'); font-weight: 200 800; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Sora'; src: url('../fonts/Sora.woff2') format('woff2'); font-weight: 100 800; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Outfit'; src: url('../fonts/Outfit.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-SpaceGrotesk'; src: url('../fonts/SpaceGrotesk.woff2') format('woff2'); font-weight: 300 700; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Syne'; src: url('../fonts/Syne.woff2') format('woff2'); font-weight: 400 800; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Bricolage'; src: url('../fonts/Bricolage.woff2') format('woff2'); font-weight: 200 800; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Unbounded'; src: url('../fonts/Unbounded.woff2') format('woff2'); font-weight: 200 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-BebasNeue'; src: url('../fonts/BebasNeue.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-DMSerif'; src: url('../fonts/DMSerif.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-DMSerif'; src: url('../fonts/DMSerif-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: block; }
+@font-face { font-family: 'F-Playfair'; src: url('../fonts/Playfair.woff2') format('woff2'); font-weight: 400 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Playfair'; src: url('../fonts/Playfair-Italic.woff2') format('woff2'); font-weight: 400 900; font-style: italic; font-display: block; }
+@font-face { font-family: 'F-InstrumentSerif'; src: url('../fonts/InstrumentSerif.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-InstrumentSerif'; src: url('../fonts/InstrumentSerif-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: block; }
+@font-face { font-family: 'F-Fraunces'; src: url('../fonts/Fraunces.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: 'F-Fraunces'; src: url('../fonts/Fraunces-Italic.woff2') format('woff2'); font-weight: 100 900; font-style: italic; font-display: block; }
+@font-face { font-family: 'F-JetBrainsMono'; src: url('../fonts/JetBrainsMono.woff2') format('woff2'); font-weight: 100 800; font-style: normal; font-display: block; }

@@ -217,10 +217,11 @@
   64%  { opacity: 1; transform: scale(1.05); filter: blur(0); }
   100% { opacity: 0; transform: scale(1.9); filter: blur(30px); }
 }
-/* The chrome mark: it draws itself on (about 2.6 s) and the type lands as
-   it settles. The mark only fades in quickly; its canvas does the rest. */
-.scene.mark-in.play { --start: 1900ms; }
-.scene.mark-in.play .el-sculpture[data-in] { animation-duration: .5s; animation-delay: 0s; }
+/* The chrome mark's open: close-ups cut on the beat, then the pull back
+   (about 5.4 s in all, Sculpture.INTRO_MS); the type lands on the drop.
+   The mark's canvas plays its own entrance. */
+.scene.mark-in.play { --start: 5000ms; }
+.scene.mark-in.play .el-sculpture[data-in] { animation: none; }
 .scene.mark-in .txt { text-shadow: 0 2px 30px rgba(2, 10, 40, .35); }
 @keyframes opGlow { 0% { opacity: 0; } 40% { opacity: 1; } 75% { opacity: .8; } 100% { opacity: 0; transform: scale(1.4); } }
 .el-media img, .el-media video { -webkit-user-drag: none; user-select: none; }

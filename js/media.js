@@ -62,12 +62,14 @@ const Media = (() => {
     return await new Promise(r => c.toBlob(r, png ? 'image/webp' : 'image/jpeg', .9));
   }
 
+  const kindOf = (blob) => blob.type.startsWith('video/') ? 'video' : blob.type.startsWith('audio/') ? 'audio' : 'image';
+
   async function put(file) {
     const blob = await shrink(file);
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     await tx('readwrite', s => s.put(blob, id));
     urls.set(id, URL.createObjectURL(blob));
-    kinds.set(id, blob.type.startsWith('video/') ? 'video' : 'image');
+    kinds.set(id, kindOf(blob));
     return 'm:' + id;
   }
 
@@ -77,13 +79,14 @@ const Media = (() => {
     const blob = await tx('readonly', s => s.get(id));
     if (!blob) return;
     urls.set(id, URL.createObjectURL(blob));
-    kinds.set(id, blob.type.startsWith('video/') ? 'video' : 'image');
+    kinds.set(id, kindOf(blob));
   }
 
   /* Make every reference in a deck available before it renders. */
   async function preload(deck) {
     const refs = new Set();
     deck.scenes.forEach(s => (s.els || []).forEach(e => { if (e.ref && e.ref.startsWith('m:')) refs.add(e.ref); }));
+    if (deck.music?.ref?.startsWith('m:')) refs.add(deck.music.ref);     // your own soundtrack
     await Promise.all([...refs].map(r => load(r).catch(() => {})));
   }
 

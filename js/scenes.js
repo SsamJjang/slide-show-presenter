@@ -48,6 +48,48 @@ const Scenes = (() => {
   };
   const COLORS = { auto: 'Auto', muted: 'Soft', blue: 'Blue', gloss: 'Gloss' };
 
+  /* Typefaces (css/fonts.css). Ascents is the house face; the rest are
+     bundled from Google Fonts so a talk never depends on the network. */
+  const FONTS = {
+    ascents:    ['Ascents', "'Ascents'", 'Sans'],
+    lexend:     ['Lexend', "'F-Lexend'", 'Sans'],
+    inter:      ['Inter', "'F-Inter'", 'Sans'],
+    manrope:    ['Manrope', "'F-Manrope'", 'Sans'],
+    sora:       ['Sora', "'F-Sora'", 'Sans'],
+    outfit:     ['Outfit', "'F-Outfit'", 'Sans'],
+    space:      ['Space Grotesk', "'F-SpaceGrotesk'", 'Sans'],
+    bricolage:  ['Bricolage', "'F-Bricolage'", 'Display'],
+    syne:       ['Syne', "'F-Syne'", 'Display'],
+    unbounded:  ['Unbounded', "'F-Unbounded'", 'Display'],
+    bebas:      ['Bebas Neue', "'F-BebasNeue'", 'Display'],
+    playfair:   ['Playfair', "'F-Playfair'", 'Serif'],
+    fraunces:   ['Fraunces', "'F-Fraunces'", 'Serif'],
+    dmserif:    ['DM Serif', "'F-DMSerif'", 'Serif'],
+    instrument: ['Instrument Serif', "'F-InstrumentSerif'", 'Serif'],
+    mono:       ['JetBrains Mono', "'F-JetBrainsMono'", 'Mono'],
+  };
+  const WEIGHTS = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Black']];
+  const EFFECTS = { none: 'None', shadow: 'Shadow', glow: 'Glow', outline: 'Outline' };
+  const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
+
+  /* Everything you can set on type, on top of its style: typeface, weight,
+     italic, capitals, tracking, leading, any colour, and an effect. */
+  function typeCSS(e) {
+    let s = '';
+    if (e.font && FONTS[e.font]) s += `font-family:${FONTS[e.font][1]},'Ascents',sans-serif;`;
+    if (e.weight) s += `font-weight:${e.weight};`;
+    if (e.italic) s += 'font-style:italic;';
+    if (e.caps) s += 'text-transform:uppercase;';
+    if (e.track != null && e.track !== '') s += `letter-spacing:${e.track}em;`;
+    if (e.lh) s += `line-height:${e.lh};`;
+    if (isHex(e.color)) s += `color:${e.color};`;
+    if (e.fx === 'shadow') s += 'text-shadow:0 .06em .5em rgba(0,0,0,.45);';
+    if (e.fx === 'glow') s += 'text-shadow:0 0 .35em currentColor,0 0 1.2em currentColor;';
+    if (e.fx === 'outline') s += '-webkit-text-stroke:.025em currentColor;-webkit-text-fill-color:transparent;';
+    return s;
+  }
+  const colorClass = (e) => 'c-' + (isHex(e.color) ? 'auto' : (e.color || 'auto'));
+
   /* ---------- element factories ---------- */
 
   const E = {
@@ -70,7 +112,7 @@ const Scenes = (() => {
   const LAYOUTS = {
     blank:     { name: 'Blank', group: 'Start', field: 'navy', els: () => [] },
     chromeOpen: { name: 'Intro · chrome mark', group: 'Open', field: 'deep', footer: false,
-      hint: 'Connect 2026: the mark in chrome, drawn on, the name across it.',
+      hint: 'Connect 2026: close-ups of the chrome mark cut to the music, then the whole mark and the name.',
       els: () => [
         E.sculpture(420, 0, 1080, 1080, { shape: 'chrome', roll: 0, tint: 'warm' }),
         E.text('APEX', 'title', 150, 470, 560, { size: 112 }),
@@ -176,6 +218,11 @@ const Scenes = (() => {
     { group: 'Text', name: 'Body', make: () => E.text('Supporting text, in one or two lines.', 'body', 160, 500, 1000, { color: 'muted' }) },
     { group: 'Text', name: 'Caption', make: () => E.text('Caption', 'caption', 160, 520, 600) },
     { group: 'Text', name: 'Number', make: () => E.text('01', 'number', 0, 400, 1920, { align: 'center', color: 'muted' }) },
+    { group: 'Text', name: 'Serif headline', make: () => E.text('A serif headline', 'title', 160, 420, 1500, { font: 'playfair' }) },
+    { group: 'Text', name: 'Italic serif', make: () => E.text('Said softly.', 'statement', 0, 470, 1920, { font: 'instrument', italic: true, align: 'center' }) },
+    { group: 'Text', name: 'Tall capitals', make: () => E.text('BIG NEWS', 'display', 160, 380, 1500, { font: 'bebas', size: 260, track: .02 }) },
+    { group: 'Text', name: 'Wide display', make: () => E.text('Ascend', 'display', 160, 420, 1500, { font: 'unbounded', weight: 700, size: 150 }) },
+    { group: 'Text', name: 'Mono label', make: () => E.text('APEX · 2027', 'caption', 160, 520, 800, { font: 'mono', caps: true, track: .14, color: 'muted' }) },
     { group: 'Text', name: 'Icon + word', make: () => E.lockup('Feature', 'spark', 0, 482, 1920) },
     // Content
     { group: 'Content', name: 'Card', make: () => E.card('A card', 'One line about it, kept short.', 660, 240, 600, 600) },
@@ -234,8 +281,8 @@ const Scenes = (() => {
       case 'text': {
         const st = TEXT_STYLES[e.style] || TEXT_STYLES.body;
         const size = e.size || st.size;
-        return `<div class="txt c-${e.color || 'auto'}" data-edit style="font-size:${size}px;font-weight:${st.weight};` +
-          `line-height:${st.lh};letter-spacing:${st.ls}em;text-align:${e.align || 'left'}">${esc(e.text)}</div>`;
+        return `<div class="txt ${colorClass(e)}" data-edit style="font-size:${size}px;font-weight:${st.weight};` +
+          `line-height:${st.lh};letter-spacing:${st.ls}em;text-align:${e.align || 'left'};${typeCSS(e)}">${esc(e.text)}</div>`;
       }
       case 'lockup': {
         const isMark = e.glyph === 'mark';
@@ -243,7 +290,7 @@ const Scenes = (() => {
         const icon = isMark
           ? `<img class="logo" src="assets/apex.png" alt="APEX" style="height:${Math.round(s * 1.05)}px;width:auto">`
           : `<svg viewBox="0 0 24 24" style="height:${Math.round(s * .95)}px"><path d="${SPARK}" fill="currentColor"/></svg>`;
-        return `<div class="lock${isMark ? ' brand' : ''}" style="font-size:${s}px">${icon}<span data-edit>${esc(e.text)}</span></div>`;
+        return `<div class="lock${isMark ? ' brand' : ''}" style="font-size:${s}px;${typeCSS(e)}">${icon}<span data-edit>${esc(e.text)}</span></div>`;
       }
       case 'media': {
         const src = Media.url(e.ref);
@@ -268,12 +315,12 @@ const Scenes = (() => {
       }
       case 'shape': return `<div class="shape shape-${e.form || 'blob'} t-${e.tint || 'iris'}"></div>`;
       case 'card':
-        return `<div class="panel panel-${e.style || 'frost'}"><div class="panel-t" data-edit="text">${esc(e.text)}</div>` +
+        return `<div class="panel panel-${e.style || 'frost'}" style="${typeCSS(e)}"><div class="panel-t" data-edit="text">${esc(e.text)}</div>` +
           `<div class="panel-b" data-edit="sub">${esc(e.sub)}</div></div>`;
       case 'stat': {
         const s = e.size || 220;
         return `<div class="stat" style="text-align:${e.align || 'left'}">` +
-          `<div class="stat-n txt c-${e.color || 'auto'}" data-edit="text" style="font-size:${s}px">${esc(e.text)}</div>` +
+          `<div class="stat-n txt ${colorClass(e)}" data-edit="text" style="font-size:${s}px;${typeCSS(e)}">${esc(e.text)}</div>` +
           `<div class="stat-l txt c-muted" data-edit="sub" style="font-size:${Math.max(22, Math.round(s * .16))}px">${esc(e.sub)}</div></div>`;
       }
       case 'list': return listHTML(e);
@@ -289,7 +336,7 @@ const Scenes = (() => {
   /* A list: one line per item, a soft dot or its number in front. */
   function listHTML(e) {
     const items = String(e.text || '').split('\n');
-    return `<div class="bullets bullets-${e.kind || 'dots'} txt c-${e.color || 'auto'}" data-edit="text" style="font-size:${e.size || 44}px">` +
+    return `<div class="bullets bullets-${e.kind || 'dots'} txt ${colorClass(e)}" data-edit="text" style="font-size:${e.size || 44}px;${typeCSS(e)}">` +
       items.map((t, i) => `<div class="li"><i>${e.kind === 'numbers' ? String(i + 1).padStart(2, '0') : ''}</i><span>${esc(t)}</span></div>`).join('') +
       `</div>`;
   }
@@ -331,7 +378,9 @@ const Scenes = (() => {
   function elHTML(e, ord, still = false) {
     const media = e.type === 'media' ? (e.round === 'circle' ? ' circle' : e.round ? ' round' : '') + (Media.url(e.ref) ? '' : ' empty') : '';
     const soft = e.type === 'material' && e.soft ? ' soft' : '';
-    return `<div class="el el-${e.type}${media}${soft}" data-id="${e.id}" data-in style="--o:${ord.indexOf(e)};${box(e)}">${body(e, still)}</div>`;
+    // Any element can be faded and turned.
+    const look = (e.op != null && e.op < 1 ? `opacity:${e.op};` : '') + (e.rot ? `rotate:${e.rot}deg;` : '');
+    return `<div class="el el-${e.type}${media}${soft}" data-id="${e.id}" data-in style="--o:${ord.indexOf(e)};${box(e)}${look}">${body(e, still)}</div>`;
   }
 
   function html(scene, { still = false } = {}) {
@@ -365,5 +414,5 @@ const Scenes = (() => {
 
   const FIELDS = [['navy', 'Navy'], ['deep', 'Deep blue'], ['ice', 'Ice'], ['pale', 'Pale'], ['pastel', 'Daylight'], ['grey', 'Grey'], ['black', 'Black'], ['white', 'White']];
 
-  return { LAYOUTS, INSERTS, TEXT_STYLES, COLORS, SHAPE_TINTS, FIELDS, E, html, elHTML, body, order, mount, make, esc, uid };
+  return { LAYOUTS, INSERTS, TEXT_STYLES, COLORS, FONTS, WEIGHTS, EFFECTS, SHAPE_TINTS, FIELDS, E, html, elHTML, body, order, mount, make, esc, uid };
 })();

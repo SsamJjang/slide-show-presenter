@@ -77,6 +77,7 @@ const Deck = (() => {
     const media = {};
     const refs = new Set();
     deck.scenes.forEach(s => (s.els || []).forEach(e => { if (e.ref && e.ref.startsWith('m:')) refs.add(e.ref); }));
+    if (deck.music?.ref?.startsWith('m:')) refs.add(deck.music.ref);
     for (const r of refs) {
       const b = await Media.blob(r);
       if (b) media[r] = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); });
@@ -99,6 +100,7 @@ const Deck = (() => {
     }
     delete d.media;
     d.scenes.forEach(s => (s.els || []).forEach(e => { if (map[e.ref]) e.ref = map[e.ref]; }));
+    if (d.music && map[d.music.ref]) d.music.ref = map[d.music.ref];
     replace(migrate(d));
   }
 

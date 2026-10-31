@@ -27,6 +27,7 @@ input, textarea { font: inherit; color: inherit; }
 
 /* ---------------- Bar ---------------- */
 .bar {
+  position: relative; z-index: 50;   /* its menus open over the selection toolbar */
   height: 60px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 16px 0 20px; border-bottom: 1px solid var(--line);
 }
@@ -237,3 +238,27 @@ input, textarea { font: inherit; color: inherit; }
 .pthumb { aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; position: relative; outline: 1.5px solid transparent; transition: outline-color .15s; }
 .pcard:hover .pthumb { outline-color: rgba(255, 255, 255, .5); }
 .pcard b { display: block; margin-top: 6px; font-size: 12px; font-weight: 500; color: #d9dbe0; }
+
+/* Type controls and the "More" row */
+.tsize { width: 64px; }
+.ti { font-family: Georgia, serif; font-style: italic; font-size: 14px; }
+.tcolor { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 9px; background: none; cursor: pointer; }
+.tcolor::-webkit-color-swatch-wrapper { padding: 5px; }
+.tcolor::-webkit-color-swatch { border: 1px solid rgba(255, 255, 255, .25); border-radius: 50%; }
+.tcolor.on::-webkit-color-swatch { border: 2px solid #fff; }
+.trow { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding-top: 5px; margin-top: 2px; border-top: 1px solid var(--line-2); }
+.trange { width: 96px; accent-color: #fff; }
+.tlabel output { min-width: 34px; color: #c9ccd3; font-variant-numeric: tabular-nums; }
+
+/* Music */
+.note::before { content: '♪'; font-size: 15px; line-height: 1; }
+.music-pop { width: 300px; padding: 14px; left: 0; right: auto; z-index: 60; }
+.mp-h { margin: 12px 2px 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8b8f99; }
+.mp-h:first-child { margin-top: 0; }
+.mp-seg { display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: rgba(255, 255, 255, .06); }
+.menu .mp-seg button { flex: 1; text-align: center; padding: 7px 6px; border-radius: 8px; color: #c9ccd3; }
+.menu .mp-seg button.on { background: rgba(255, 255, 255, .16); color: #fff; }
+.mp-note { margin: 10px 2px 0; font-size: 12px; line-height: 1.45; color: #8b8f99; }
+.menu .mp-file { margin-top: 10px; background: rgba(255, 255, 255, .06); text-align: center; }
+.mp-vol { width: 100%; accent-color: #fff; }
+.menu .mp-play { width: 100%; justify-content: center; margin-top: 12px; border: 1px solid var(--line-2); text-align: center; }

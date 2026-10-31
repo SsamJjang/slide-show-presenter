@@ -52,7 +52,17 @@ const Player = (() => {
       const start = () => {
         const c = document.createElement('canvas');
         box.appendChild(c);
-        const f = Sculpture.mount(c, { ...opts, intro: true });
+        // The chrome mark's open roams the whole screen in close-up, so its
+        // canvas covers the scene, told where the mark's own box sits in it.
+        let view = null;
+        if (opts.shape === 'chrome') {
+          const el = box.parentElement;
+          const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
+          const w = el.offsetWidth, h = el.offsetHeight;
+          Object.assign(c.style, { inset: 'auto', left: -x + 'px', top: -y + 'px', width: '1920px', height: '1080px' });
+          view = [(x + w / 2 - 960) / 1080, -(y + h / 2 - 540) / 1080, h / 1080];
+        }
+        const f = Sculpture.mount(c, { ...opts, intro: true, view });
         ctrls.push(f); forms.push(f);
         box.classList.add('live');
       };
@@ -157,6 +167,9 @@ const Player = (() => {
     if (animate) scene.classList.add('play');
 
     const prev = current;
+    // The soundtrack follows the show: the chrome open gets its hits and
+    // drop, other screens a soft swell, and a video with sound ducks it.
+    Music.scene({ first: !prev, mark: scene.classList.contains('mark-in'), video: slot.querySelectorAll('video').length === 1 });
     current = { slot, release: liven(slot) };
 
     if (prev) {
@@ -174,6 +187,7 @@ const Player = (() => {
     root.hidden = false;
     root.innerHTML = '';
     current = null;
+    Music.start(Deck.deck.music);
     show(from);
     root.requestFullscreen?.().catch(() => {});
     wake();
@@ -184,6 +198,7 @@ const Player = (() => {
     active = false;
     clearInterval(clock);
     if (current) { current.release(); current = null; }
+    Music.stop();
     root.innerHTML = '';
     root.hidden = true;
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -194,6 +209,7 @@ const Player = (() => {
   const prev = () => show(index - 1);
 
   function toggleBlack() {
+    Music.duck(!black ? 'black' : false);
     if (black) { black.remove(); black = null; return; }
     black = document.createElement('div');
     black.style.cssText = 'position:absolute;inset:0;background:#000;z-index:10';

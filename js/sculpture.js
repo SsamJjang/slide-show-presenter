@@ -215,43 +215,33 @@ void main(){
      light on one side. Two hooks and the bar between them, measured from
      apex.png: hooks of radius .5, tube .155, laid along the icon's diagonal.
      Each hook leans a little in depth so the bar runs between its legs.
-     uShape.w is how far the tube is drawn: 0 nothing, 1 the whole mark. */
+     uView places the mark's own box inside a larger canvas (the whole
+     screen, while the intro's camera roams); uCam is that camera: where it
+     looks, how close, and its roll. */
   const CHROME = `
 precision highp float;
 uniform vec2 uRes; uniform float uTime, uRoll, uAlpha, uSize;
-uniform vec4 uShape;      // x: tint (0 Connect amber · 1 APEX mint · 2 silver), w: drawn
+uniform vec4 uShape;      // x: tint (0 Connect amber · 1 APEX mint · 2 silver)
+uniform vec4 uView;       // xy: the box's centre, z: its height (in canvas heights)
+uniform vec4 uCam;        // xy: look at, z: zoom, w: roll
 mat2 R(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
-const float RAD = .5, TUBE = .155, UC = .74, UL = .32, BAR = .7, TILT = .3, PI = 3.14159;
-float G;
+const float RAD = .5, TUBE = .155, UC = .74, UL = .32, BAR = .7, TILT = .3;
 
-/* How thick the tube is at s (0 → 1 along its stroke) when drawn to g:
-   full behind the head, tapering to a point at it, absent past it. */
-float grow(float s, float g){
-  const float W = .2;
-  float f = 1. - smoothstep(g*(1. + W) - W, g*(1. + W), s);
-  return mix(-.03, TUBE, sqrt(f));
-}
-/* One hook: the bend at the origin, its legs running back along -x.
-   Drawn from the tip of the upper leg, round the bend, to the other tip. */
-float hook(vec3 p, float g){
-  float leg = UC - UL, tot = 2.*leg + PI*RAD, s;
-  vec2 c;
-  if (p.x > 0.) { float a = atan(p.y, p.x); c = RAD*vec2(cos(a), sin(a)); s = leg + RAD*(PI*.5 - a); }
-  else { float x = clamp(p.x, -leg, 0.); c = vec2(x, sign(p.y + 1e-5)*RAD); s = p.y > 0. ? x + leg : tot - x - leg; }
-  return length(p - vec3(c, c.y*TILT)) - grow(s/tot, g);
+/* One hook: the bend at the origin, its legs running back along -x. */
+float hook(vec3 p){
+  vec2 c = p.x > 0. ? RAD*normalize(p.xy) : vec2(max(p.x, UL - UC), sign(p.y + 1e-5)*RAD);
+  return length(p - vec3(c, c.y*TILT)) - TUBE;
 }
 float map(vec3 p){
-  // The mark swings in from the side as it is drawn, then barely sways.
-  float e = 1. - G; e *= e;
-  p.xz = R(1.15*e + .14*sin(uTime*.29))*p.xz;
-  p.yz = R(-.55*e + .08*sin(uTime*.23 + 1.3))*p.yz;
+  // The mark barely sways; the light does the moving.
+  p.xz = R(.14*sin(uTime*.29))*p.xz;
+  p.yz = R(.08*sin(uTime*.23 + 1.3))*p.yz;
   // Along the icon's diagonal: u runs to the upper right, v across it.
   vec3 q = vec3((p.x + p.y)*.70711, (p.y - p.x)*.70711, p.z);
-  float gb = clamp(G*1.7, 0., 1.), gh = clamp(G*1.3 - .25, 0., 1.);
-  float bar = length(q - vec3(clamp(q.x, -BAR, BAR), 0., 0.)) - grow(abs(q.x)/BAR, gb);
-  float a = hook(vec3(q.x - UC, q.y, q.z), gh);
-  float b = hook(vec3(-q.x - UC, -q.y, q.z), gh);
+  float bar = length(q - vec3(clamp(q.x, -BAR, BAR), 0., 0.)) - TUBE;
+  float a = hook(vec3(q.x - UC, q.y, q.z));
+  float b = hook(vec3(-q.x - UC, -q.y, q.z));
   return min(bar, min(a, b))*.8;
 }
 vec3 nrm(vec3 p){ vec2 k = vec2(1.,-1.)*.0015;
@@ -277,14 +267,15 @@ vec3 env(vec3 r){
 }
 
 void main(){
-  G = clamp(uShape.w, 0., 1.);
   vec2 uv = gl_FragCoord.xy/uRes;
   vec2 d = vec2((uv.x-.5)*uRes.x/uRes.y, uv.y-.5);
+  d = (d - uView.xy)/uView.z;
+  d = R(uCam.w)*d/uCam.z + uCam.xy;
   vec2 q = R(uRoll)*d/uSize*1.62;
   vec4 o = vec4(0.);
-  if (length(q) < 2.1 && uAlpha > .001 && G > .001) {
+  if (length(q) < 2.1 && uAlpha > .001) {
     vec3 ro = vec3(0.,0.,3.2), rd = normalize(vec3(q,-2.6));
-    float px = 3.2/(uRes.y*uSize);
+    float px = 3.2/(uRes.y*uSize*uView.z*uCam.z);
     float rb = 1.55, b = dot(ro, rd), hh = b*b - dot(ro, ro) + rb*rb;
     float t = 1.4, t1 = -1., dm = 1e9, tm = 1.4; bool hit = false;
     if (hh > 0.) { t = max(1.4, -b - sqrt(hh)); t1 = -b + sqrt(hh); }
@@ -329,7 +320,7 @@ void main(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const U = {}; ['uRes', 'uTime', 'uRoll', 'uAlpha', 'uSize', 'uShape', 'uKind', 'uMat'].forEach(n => U[n] = gl.getUniformLocation(pr, n));
+    const U = {}; ['uRes', 'uTime', 'uRoll', 'uAlpha', 'uSize', 'uShape', 'uKind', 'uMat', 'uView', 'uCam'].forEach(n => U[n] = gl.getUniformLocation(pr, n));
     return {
       gl,
       draw(st, time) {
@@ -343,6 +334,8 @@ void main(){
         gl.uniform4f(U.uShape, st.w, st.t, st.tw, st.bend);
         if (U.uKind) gl.uniform1f(U.uKind, st.kind || 0);
         if (U.uMat) gl.uniform1f(U.uMat, st.mat || 0);
+        if (U.uView) gl.uniform4f(U.uView, ...(st.view || [0, 0, 1]), 0);
+        if (U.uCam) gl.uniform4f(U.uCam, ...(st.cam || [0, 0, 1, 0]));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       },
     };
@@ -357,17 +350,40 @@ void main(){
   const TINTS = { warm: 0, mint: 1, silver: 2 };
   const fragOf = (o) => isLiquid(o) ? LIQUID : isChrome(o) ? CHROME : FRAG;
   const target = (o) => {
-    if (isChrome(o)) return { roll: (o.roll || 0) * Math.PI / 180, alpha: 1, size: (o.size || .92) * .86, w: TINTS[o.tint] || 0, t: 0, tw: 0, bend: 1 };
+    if (isChrome(o)) return { roll: (o.roll || 0) * Math.PI / 180, alpha: 1, size: (o.size || .92) * .86, w: TINTS[o.tint] || 0, t: 0, tw: 0, bend: 0 };
     const s = LIQUIDS[o.shape] || SHAPES[o.shape] || SHAPES.twist;
     return { roll: (o.roll || 0) * Math.PI / 180, alpha: 1, size: o.size || .92, ...s,
              t: isLiquid(o) ? (o.seed || 0) : s.t };
   };
-  // The chrome mark's draw-on: slow start, long glide into place.
-  const DRAW = 2600;
-  const easeDraw = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  /* The chrome mark's open, as the Connect 2026 keynote opens: hard cuts
+     between extreme close-ups of the chrome, each drifting slowly, then one
+     long pull back to the whole mark. The cuts fall on the soundtrack's beat
+     so the music hits each one. A camera is [look x, look y, zoom, roll] in
+     the mark's box (height 1, centre 0); each shot drifts from a to b. */
+  const BEAT = 60 / 112;
+  const SHOTS = [
+    { beats: 2, a: [.37, .31, 4.4, .55], b: [.33, .36, 4.9, .62] },       // round the top hook's bend
+    { beats: 2, a: [-.25, .02, 3.5, -.4], b: [-.2, .06, 3.8, -.47] },     // a hook's rounded tip
+    { beats: 2, a: [-.05, -.03, 3.1, .95], b: [.04, .05, 3.3, .9] },      // along the bar
+    { beats: 4, a: [-.12, -.1, 2.6, -.25], b: [0, 0, 1, 0], pull: true },  // pull back to the whole mark
+  ];
+  const INTRO_MS = SHOTS.reduce((t, s) => t + s.beats, 0) * BEAT * 1000;
+  const ease = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  function camAt(ms) {
+    let t = ms / 1000 / BEAT;
+    for (const s of SHOTS) {
+      if (t < s.beats) {
+        const f = s.pull ? ease(t / s.beats) : t / s.beats;
+        return s.a.map((v, i) => v + (s.b[i] - v) * f);
+      }
+      t -= s.beats;
+    }
+    return null;
+  }
 
   /* Live: springs in from small, turned and transparent when `intro`.
-     The chrome mark instead draws itself on, swinging in from the side. */
+     The chrome mark instead plays its camera open; opts.view says where its
+     box sits inside a whole-screen canvas. */
   function mount(canvas, opts = {}) {
     const R = renderer(canvas, false, fragOf(opts));
     if (!R) return { destroy() {}, resize() {} };
@@ -381,8 +397,9 @@ void main(){
     });
     const to = target(opts);
     const cur = { ...to };
-    const drawing = opts.intro && isChrome(opts);
-    if (drawing) { cur.size = to.size * .8; cur.roll = to.roll - .25; cur.alpha = .2; }
+    const shots = opts.intro && isChrome(opts);
+    const view = opts.view || null;
+    if (shots) cur.alpha = 0;
     else if (opts.intro) { cur.size = to.size * .4; cur.roll = to.roll - 1.2; cur.alpha = 0; }
     const vel = { size: 0, roll: 0, alpha: 0 };
     let raf = 0, last = 0;
@@ -391,19 +408,20 @@ void main(){
 
     function resize() {
       const w = canvas.clientWidth || 600, h = canvas.clientHeight || 600;
-      const k = Math.min(1, 1300 / Math.max(w, h));
+      const k = Math.min(1, (view ? 1700 : 1300) / Math.max(w, h));
       canvas.width = Math.max(2, Math.round(w * k));
       canvas.height = Math.max(2, Math.round(h * k));
     }
     function frame(now) {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
-      for (const k of ['size', 'roll', 'alpha']) {
+      if (shots) cur.alpha = Math.min(1, (now - t0) / 350);    // up out of black, then the cuts
+      else for (const k of ['size', 'roll', 'alpha']) {
         vel[k] += (-K * K * (cur[k] - to[k]) - 2 * K * vel[k]) * dt;
         cur[k] += vel[k] * dt;
       }
-      const bend = drawing ? easeDraw(Math.min(1, (now - t0) / DRAW)) : cur.bend;
-      R.draw({ ...cur, bend, alpha: Math.max(0, Math.min(1, cur.alpha)) }, (now - t0) / 1000);
+      const cam = shots ? camAt(now - t0) : null;
+      R.draw({ ...cur, view, cam, alpha: Math.max(0, Math.min(1, cur.alpha)) }, (now - t0) / 1000);
     }
     resize();
     raf = requestAnimationFrame(frame);
@@ -446,5 +464,5 @@ void main(){
     return url;
   }
 
-  return { mount, still, SHAPES, LIQUIDS };
+  return { mount, still, SHAPES, LIQUIDS, INTRO_MS, BEAT, SHOTS };
 })();
