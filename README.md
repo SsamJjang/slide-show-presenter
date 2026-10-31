@@ -30,6 +30,10 @@ python devserver.py          # then open http://localhost:5599
   dissolve into each other the way the broadcast does.
 - **Opener:** plays the identity open. Drafted lines draw on, iridescent
   bands sweep through, and the title lands with the sculpture.
+- **Intro · chrome mark:** the Connect 2026 open. The APEX link draws itself
+  on in polished chrome, swings in from the side, and the name lands across
+  it. The mark is also an element (Forms → Chrome APEX mark) with Connect
+  amber, APEX mint or silver reflections.
 - **Countdown:** counts down live.
 - **Full-bleed video:** plays with sound.
 

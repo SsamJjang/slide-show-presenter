@@ -400,10 +400,11 @@ const Editor = (() => {
     } else if (e.type === 'sculpture') {
       h += `<select data-set="shape" class="tsel">${[['twist', 'Twist'], ['ribbon', 'Ribbon'], ['lens', 'Lens'], ['pebble', 'Pebble'],
         ['petal', 'Petal'], ['liquid', 'Liquid'], ['orb', 'Orb'], ['silk', 'Silk'], ['plume', 'Plume'],
-        ['glass', 'Glass slab'], ['frost', 'Frosted lens']].map(([v, l]) =>
+        ['glass', 'Glass slab'], ['frost', 'Frosted lens'], ['chrome', 'Chrome APEX mark']].map(([v, l]) =>
         `<option value="${v}"${e.shape === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` + sep +
         `<button class="tbtn" data-act="rotL" title="Turn left">↺</button><button class="tbtn" data-act="rotR" title="Turn right">↻</button>` +
-        (e.shape === 'liquid' ? sep + `<button class="tbtn" data-act="reshuffle">New flow</button>` : '');
+        (e.shape === 'liquid' ? sep + `<button class="tbtn" data-act="reshuffle">New flow</button>` : '') +
+        (e.shape === 'chrome' ? sep + seg('tint', e.tint || 'warm', [['warm', 'Connect amber'], ['mint', 'APEX mint'], ['silver', 'Silver']]) : '');
     } else if (e.type === 'material') {
       h += `<select data-set="kind" class="tsel">${Object.entries(Moments.MATERIALS).map(([v, l]) =>
         `<option value="${v}"${e.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select>` + sep +

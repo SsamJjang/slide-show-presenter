@@ -46,6 +46,13 @@
 .field-navy i:nth-child(2) { width: 1000px; height: 900px; right: -300px; top: 120px; background: #1aa0c8; opacity: .38; animation: drift2 46s ease-in-out infinite alternate; }
 .field-navy i:nth-child(3) { width: 900px; height: 700px; left: 520px; bottom: -520px; background: #3d62ff; opacity: .45; animation: drift3 52s ease-in-out infinite alternate; }
 
+/* Deep blue: the Connect 2026 field — near-black navy at the top left
+   opening into a clear royal blue at the bottom right. */
+.field-deep { background: linear-gradient(160deg, #04103a 0%, #08236e 38%, #1447b4 72%, #2d6fe0 100%); }
+.field-deep i:nth-child(1) { width: 1200px; height: 900px; left: -400px; top: -460px; background: #020823; opacity: .7; animation: drift1 48s ease-in-out infinite alternate; }
+.field-deep i:nth-child(2) { width: 1100px; height: 900px; right: -360px; bottom: -420px; background: #3c86f2; opacity: .45; animation: drift2 54s ease-in-out infinite alternate; }
+.field-deep i:nth-child(3) { width: 900px; height: 700px; left: 560px; top: 160px; background: #1b3fa8; opacity: .3; animation: drift3 60s ease-in-out infinite alternate; }
+
 /* Pale: the feature-card field ("Live AI"). Cool off-white to blue-grey. */
 .field-pale { background: linear-gradient(105deg, #eef1f5 0%, #cdd6e1 38%, #a2b2c6 72%, #8296b0 100%); }
 .field-pale i:nth-child(1) { width: 1200px; height: 900px; left: -400px; top: -360px; background: #ffffff; opacity: .7; animation: drift1 44s ease-in-out infinite alternate; }
@@ -210,6 +217,11 @@
   64%  { opacity: 1; transform: scale(1.05); filter: blur(0); }
   100% { opacity: 0; transform: scale(1.9); filter: blur(30px); }
 }
+/* The chrome mark: it draws itself on (about 2.6 s) and the type lands as
+   it settles. The mark only fades in quickly; its canvas does the rest. */
+.scene.mark-in.play { --start: 1900ms; }
+.scene.mark-in.play .el-sculpture[data-in] { animation-duration: .5s; animation-delay: 0s; }
+.scene.mark-in .txt { text-shadow: 0 2px 30px rgba(2, 10, 40, .35); }
 @keyframes opGlow { 0% { opacity: 0; } 40% { opacity: 1; } 75% { opacity: .8; } 100% { opacity: 0; transform: scale(1.4); } }
 .el-media img, .el-media video { -webkit-user-drag: none; user-select: none; }
 

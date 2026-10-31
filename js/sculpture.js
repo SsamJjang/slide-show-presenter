@@ -12,6 +12,7 @@
    shapes: twist ribbon lens pebble petal (gloss) · silk plume (2024 silk)
            glass frost (frosted glass)
            liquid orb (merging liquid)
+           chrome (the APEX mark in polished chrome; opts.tint warm mint silver)
    ============================================================ */
 
 const Sculpture = (() => {
@@ -209,6 +210,107 @@ void main(){
   gl_FragColor = clamp(o, 0., 1.);
 }`;
 
+  /* Chrome mark: the APEX link, as Connect 2026 shows the Meta loop — one
+     thick polished tube, silver, with the studio sliding across it and a warm
+     light on one side. Two hooks and the bar between them, measured from
+     apex.png: hooks of radius .5, tube .155, laid along the icon's diagonal.
+     Each hook leans a little in depth so the bar runs between its legs.
+     uShape.w is how far the tube is drawn: 0 nothing, 1 the whole mark. */
+  const CHROME = `
+precision highp float;
+uniform vec2 uRes; uniform float uTime, uRoll, uAlpha, uSize;
+uniform vec4 uShape;      // x: tint (0 Connect amber · 1 APEX mint · 2 silver), w: drawn
+mat2 R(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+
+const float RAD = .5, TUBE = .155, UC = .74, UL = .32, BAR = .7, TILT = .3, PI = 3.14159;
+float G;
+
+/* How thick the tube is at s (0 → 1 along its stroke) when drawn to g:
+   full behind the head, tapering to a point at it, absent past it. */
+float grow(float s, float g){
+  const float W = .2;
+  float f = 1. - smoothstep(g*(1. + W) - W, g*(1. + W), s);
+  return mix(-.03, TUBE, sqrt(f));
+}
+/* One hook: the bend at the origin, its legs running back along -x.
+   Drawn from the tip of the upper leg, round the bend, to the other tip. */
+float hook(vec3 p, float g){
+  float leg = UC - UL, tot = 2.*leg + PI*RAD, s;
+  vec2 c;
+  if (p.x > 0.) { float a = atan(p.y, p.x); c = RAD*vec2(cos(a), sin(a)); s = leg + RAD*(PI*.5 - a); }
+  else { float x = clamp(p.x, -leg, 0.); c = vec2(x, sign(p.y + 1e-5)*RAD); s = p.y > 0. ? x + leg : tot - x - leg; }
+  return length(p - vec3(c, c.y*TILT)) - grow(s/tot, g);
+}
+float map(vec3 p){
+  // The mark swings in from the side as it is drawn, then barely sways.
+  float e = 1. - G; e *= e;
+  p.xz = R(1.15*e + .14*sin(uTime*.29))*p.xz;
+  p.yz = R(-.55*e + .08*sin(uTime*.23 + 1.3))*p.yz;
+  // Along the icon's diagonal: u runs to the upper right, v across it.
+  vec3 q = vec3((p.x + p.y)*.70711, (p.y - p.x)*.70711, p.z);
+  float gb = clamp(G*1.7, 0., 1.), gh = clamp(G*1.3 - .25, 0., 1.);
+  float bar = length(q - vec3(clamp(q.x, -BAR, BAR), 0., 0.)) - grow(abs(q.x)/BAR, gb);
+  float a = hook(vec3(q.x - UC, q.y, q.z), gh);
+  float b = hook(vec3(-q.x - UC, -q.y, q.z), gh);
+  return min(bar, min(a, b))*.8;
+}
+vec3 nrm(vec3 p){ vec2 k = vec2(1.,-1.)*.0015;
+  return normalize(k.xyy*map(p+k.xyy) + k.yyx*map(p+k.yyx) + k.yxy*map(p+k.yxy) + k.xxx*map(p+k.xxx)); }
+
+/* The studio the chrome reflects: bright sky, a dark horizon line, the
+   blue field below, a warm light low on the right, lilac on the left and
+   two soft-box strips. It turns slowly, so light slides along the tube. */
+vec3 env(vec3 r){
+  r.xz = R(uTime*.09 + .4)*r.xz;
+  float y = r.y;
+  vec3 c = y > -.15 ? mix(vec3(.6,.64,.76), vec3(1.), smoothstep(-.2, .8, y))
+                    : mix(vec3(.16,.3,.75), vec3(.04,.08,.24), smoothstep(-.2, -.9, y));
+  c += vec3(.3)*smoothstep(.2, .95, r.z);
+  c = mix(c, vec3(.02,.03,.08), exp(-abs(y + .15)*16.)*.9);
+  c *= 1. - .45*exp(-abs(y - .32)*20.);
+  vec3 warm = uShape.x < .5 ? vec3(1.,.6,.26) : uShape.x < 1.5 ? vec3(.1,.95,.78) : vec3(.92,.94,1.);
+  c = mix(c, warm*1.15, pow(max(dot(r, normalize(vec3(.85,-.15,.45))), 0.), 2.6)*.8);
+  c += vec3(.6,.45,.85)*pow(max(dot(r, normalize(vec3(-.75,.25,.45))), 0.), 4.)*.35;
+  c += vec3(1.)*smoothstep(.07, 0., abs(r.x - .38))*smoothstep(-.1, .5, y)*.85;
+  c += vec3(1.)*smoothstep(.05, 0., abs(r.x + .55))*smoothstep(.1, .7, y)*.5;
+  return c;
+}
+
+void main(){
+  G = clamp(uShape.w, 0., 1.);
+  vec2 uv = gl_FragCoord.xy/uRes;
+  vec2 d = vec2((uv.x-.5)*uRes.x/uRes.y, uv.y-.5);
+  vec2 q = R(uRoll)*d/uSize*1.62;
+  vec4 o = vec4(0.);
+  if (length(q) < 2.1 && uAlpha > .001 && G > .001) {
+    vec3 ro = vec3(0.,0.,3.2), rd = normalize(vec3(q,-2.6));
+    float px = 3.2/(uRes.y*uSize);
+    float rb = 1.55, b = dot(ro, rd), hh = b*b - dot(ro, ro) + rb*rb;
+    float t = 1.4, t1 = -1., dm = 1e9, tm = 1.4; bool hit = false;
+    if (hh > 0.) { t = max(1.4, -b - sqrt(hh)); t1 = -b + sqrt(hh); }
+    for (int i = 0; i < 120; i++) {
+      if (t > t1) break;
+      float h = map(ro + rd*t);
+      if (h < dm) { dm = h; tm = t; }
+      if (h < .0008) { hit = true; tm = t; break; }
+      t += h;
+    }
+    float cov = hit ? 1. : clamp(1. - dm/(px*.6), 0., 1.);
+    if (cov > 0.) {
+      vec3 p = ro + rd*tm, n = nrm(p), v = -rd;
+      float fr = pow(1. - max(dot(n, v), 0.), 3.);
+      vec3 col = env(reflect(rd, n))*mix(.78, 1.05, fr);
+      vec3 l = normalize(vec3(.4,.7,.6));
+      col += vec3(1.)*pow(max(dot(reflect(-l, n), v), 0.), 90.)*.7;
+      float a = cov*uAlpha;
+      o = vec4(col*a, a);
+    }
+  }
+  float nz = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453) - .5;
+  o.rgb += nz*(1.4/255.)*o.a;
+  gl_FragColor = clamp(o, 0., 1.);
+}`;
+
   function renderer(canvas, preserve, frag = FRAG) {
     const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: !!preserve });
     if (!gl) return null;
@@ -251,15 +353,23 @@ void main(){
     orb:    { w: 1, t: 0, tw: 0,   bend: 0 },     // one glossy drop
   };
   const isLiquid = (o) => o.shape in LIQUIDS;
+  const isChrome = (o) => o.shape === 'chrome';
+  const TINTS = { warm: 0, mint: 1, silver: 2 };
+  const fragOf = (o) => isLiquid(o) ? LIQUID : isChrome(o) ? CHROME : FRAG;
   const target = (o) => {
+    if (isChrome(o)) return { roll: (o.roll || 0) * Math.PI / 180, alpha: 1, size: (o.size || .92) * .86, w: TINTS[o.tint] || 0, t: 0, tw: 0, bend: 1 };
     const s = LIQUIDS[o.shape] || SHAPES[o.shape] || SHAPES.twist;
     return { roll: (o.roll || 0) * Math.PI / 180, alpha: 1, size: o.size || .92, ...s,
              t: isLiquid(o) ? (o.seed || 0) : s.t };
   };
+  // The chrome mark's draw-on: slow start, long glide into place.
+  const DRAW = 2600;
+  const easeDraw = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 
-  /* Live: springs in from small, turned and transparent when `intro`. */
+  /* Live: springs in from small, turned and transparent when `intro`.
+     The chrome mark instead draws itself on, swinging in from the side. */
   function mount(canvas, opts = {}) {
-    const R = renderer(canvas, false, isLiquid(opts) ? LIQUID : FRAG);
+    const R = renderer(canvas, false, fragOf(opts));
     if (!R) return { destroy() {}, resize() {} };
     /* Browsers drop the oldest WebGL contexts when too many are open (after
        a presentation, say). A lost canvas paints white: hide it and let the
@@ -271,7 +381,9 @@ void main(){
     });
     const to = target(opts);
     const cur = { ...to };
-    if (opts.intro) { cur.size = to.size * .4; cur.roll = to.roll - 1.2; cur.alpha = 0; }
+    const drawing = opts.intro && isChrome(opts);
+    if (drawing) { cur.size = to.size * .8; cur.roll = to.roll - .25; cur.alpha = .2; }
+    else if (opts.intro) { cur.size = to.size * .4; cur.roll = to.roll - 1.2; cur.alpha = 0; }
     const vel = { size: 0, roll: 0, alpha: 0 };
     let raf = 0, last = 0;
     const t0 = performance.now() - (opts.phase || 0) * 1000;
@@ -290,7 +402,8 @@ void main(){
         vel[k] += (-K * K * (cur[k] - to[k]) - 2 * K * vel[k]) * dt;
         cur[k] += vel[k] * dt;
       }
-      R.draw({ ...cur, alpha: Math.max(0, Math.min(1, cur.alpha)) }, (now - t0) / 1000);
+      const bend = drawing ? easeDraw(Math.min(1, (now - t0) / DRAW)) : cur.bend;
+      R.draw({ ...cur, bend, alpha: Math.max(0, Math.min(1, cur.alpha)) }, (now - t0) / 1000);
     }
     resize();
     raf = requestAnimationFrame(frame);
@@ -314,14 +427,14 @@ void main(){
   function still(opts, w, h) {
     const k = Math.min(1, 700 / Math.max(w, h));
     const cw = Math.max(16, Math.round(w * k)), ch = Math.max(16, Math.round(h * k));
-    const key = [opts.shape, opts.roll, opts.size, opts.seed, cw, ch].join('|');
+    const key = [opts.shape, opts.roll, opts.size, opts.seed, opts.tint, cw, ch].join('|');
     if (cache.has(key)) return cache.get(key);
     let url = '';
-    const kind = isLiquid(opts) ? 'liquid' : 'form';
+    const kind = isLiquid(opts) ? 'liquid' : isChrome(opts) ? 'chrome' : 'form';
     try {
       if (!SC[kind]) {
         SC[kind] = document.createElement('canvas');
-        SR[kind] = renderer(SC[kind], true, kind === 'liquid' ? LIQUID : FRAG);
+        SR[kind] = renderer(SC[kind], true, fragOf(opts));
       }
       if (SR[kind]) {
         SC[kind].width = cw; SC[kind].height = ch;

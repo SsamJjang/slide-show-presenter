@@ -13,7 +13,8 @@
      lockup     icon + word, centred ("✦ Live AI", "∞ Meta")
      media      an image or video
      sculpture  a live, glossy organic form: twist, ribbon, lens,
-                pebble, petal — or liquid (bodies that merge) and orb
+                pebble, petal — or liquid (bodies that merge) and orb —
+                or the APEX mark in polished chrome
      glow       a soft bloom of coloured light
      material   a placed organic material: silk ribbons, fabric, bubbles,
                 blooms, cushion, capsules, crystals, sprinkles, pearls
@@ -68,6 +69,13 @@ const Scenes = (() => {
      Each is one screen from the Connect 2025 keynote or identity. */
   const LAYOUTS = {
     blank:     { name: 'Blank', group: 'Start', field: 'navy', els: () => [] },
+    chromeOpen: { name: 'Intro · chrome mark', group: 'Open', field: 'deep', footer: false,
+      hint: 'Connect 2026: the mark in chrome, drawn on, the name across it.',
+      els: () => [
+        E.sculpture(420, 0, 1080, 1080, { shape: 'chrome', roll: 0, tint: 'warm' }),
+        E.text('APEX', 'title', 150, 470, 560, { size: 112 }),
+        E.text('Ascents', 'title', 610, 470, 700, { size: 112, align: 'center' }),
+        E.text('2027', 'title', 1210, 470, 560, { size: 112, align: 'right' })] },
     countdown: { name: 'Countdown', group: 'Open', field: 'navy', hint: 'Counts down live while presenting.',
       els: () => [E.glow(-300, -360, 1300, 1100, { tint: 'violet' }), E.sculpture(-200, -260, 1000, 900, { shape: 'liquid', roll: 0, seed: 2 }),
                   E.count('05:00', 0, 380, 1920)] },
@@ -189,6 +197,7 @@ const Scenes = (() => {
     // Materials: the countdown's organic materials, placed anywhere
     ...Object.entries(Moments.MATERIALS).map(([kind, name]) => ({ group: 'Materials', name, make: () => E.material(kind) })),
     // Forms
+    { group: 'Forms', name: 'Chrome APEX mark', make: () => E.sculpture(520, 100, 880, 880, { shape: 'chrome', roll: 0, tint: 'warm' }) },
     { group: 'Forms', name: 'Sculpture', make: () => E.sculpture(560, 140, 800, 800) },
     { group: 'Forms', name: 'Ribbon', make: () => E.sculpture(260, 200, 1400, 700, { shape: 'ribbon', roll: 92 }) },
     { group: 'Forms', name: 'Lens', make: () => E.sculpture(660, 240, 600, 600, { shape: 'lens', roll: 20 }) },
@@ -249,7 +258,7 @@ const Scenes = (() => {
         return `<img src="${src}" alt="" draggable="false" style="object-fit:${e.fit}">`;
       }
       case 'sculpture': {
-        const opts = { shape: e.shape, roll: e.roll, size: e.size || .92, seed: e.seed || 0 };
+        const opts = { shape: e.shape, roll: e.roll, size: e.size || .92, seed: e.seed || 0, ...(e.tint ? { tint: e.tint } : {}) };
         const still = Sculpture.still(opts, e.w, e.h);
         return `<div class="sculpt" data-sculpt="${esc(JSON.stringify(opts))}">${still ? `<img src="${still}" alt="">` : ''}</div>`;
       }
@@ -328,7 +337,9 @@ const Scenes = (() => {
   function html(scene, { still = false } = {}) {
     const field = scene.field || 'navy';
     const ord = order(scene.els || []);
-    return `<div class="scene${LIGHT.has(field) ? ' light' : ''}${scene.fx === 'open' ? ' opener' : ''}${still ? ' still' : ''}">` +
+    // The chrome mark draws itself on first; everything else waits for it.
+    const mark = (scene.els || []).some(e => e.type === 'sculpture' && e.shape === 'chrome');
+    return `<div class="scene${LIGHT.has(field) ? ' light' : ''}${scene.fx === 'open' ? ' opener' : ''}${mark ? ' mark-in' : ''}${still ? ' still' : ''}">` +
       FIELD(field) + (scene.fx === 'open' ? openerFx() : '') +
       (scene.els || []).map(e => elHTML(e, ord, still)).join('') +
       (scene.footer !== false ? `<div class="foot"><b><i class="mark"></i>APEX</b><span>APEX Ascents</span></div>` : '') +
@@ -352,7 +363,7 @@ const Scenes = (() => {
      The player brings the liquid to life; here it is only a place for it. */
   const openerFx = () => `<div class="op-liquid" aria-hidden="true"></div><div class="op-glow" aria-hidden="true"></div>`;
 
-  const FIELDS = [['navy', 'Navy'], ['ice', 'Ice'], ['pale', 'Pale'], ['pastel', 'Daylight'], ['grey', 'Grey'], ['black', 'Black'], ['white', 'White']];
+  const FIELDS = [['navy', 'Navy'], ['deep', 'Deep blue'], ['ice', 'Ice'], ['pale', 'Pale'], ['pastel', 'Daylight'], ['grey', 'Grey'], ['black', 'Black'], ['white', 'White']];
 
   return { LAYOUTS, INSERTS, TEXT_STYLES, COLORS, SHAPE_TINTS, FIELDS, E, html, elHTML, body, order, mount, make, esc, uid };
 })();
